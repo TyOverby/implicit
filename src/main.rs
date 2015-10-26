@@ -2,10 +2,36 @@ extern crate implicit;
 extern crate lux;
 
 use lux::prelude::*;
-use lux::graphics::ColorVertex;
 use lux::color;
 
 use implicit::*;
+
+struct ImplicitCanvas {
+    size: (u32, u32),
+    pix_width: u32,
+}
+
+impl ImplicitCanvas {
+    fn render<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+        let mut sx = 0.5f32;
+        let mut sy = 0.5f32;
+        let dist = self.pix_width as f32;
+        let ex = dist * self.size.0 as f32;
+        let ey = dist * self.size.1 as f32;
+
+        while sy < ey {
+            while sx < ex {
+                let sample = shape.sample(Point(sx / dist, sy / dist));
+                frame.square(sx, sy, dist)
+                     .color(rgb(sample.0, sample.0, sample.0))
+                     .fill();
+                sx += dist;
+            }
+            sx = 0.5;
+            sy += dist;
+        }
+    }
+}
 
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
@@ -20,35 +46,20 @@ fn main() {
         radius: Scalar(50.0)
     };
 
-    let anded = And {
+    let anded = Xor {
         left: circle_1,
         right: circle_2
     };
 
-    // Set up the point buffer
-    let mut points = Vec::with_capacity(255 * 255);
-    for x in 0 .. 255 {
-        for y in 0 .. 255 {
-            points.push(ColorVertex {
-                pos: [x as f32, y as f32],
-                color: rgb(1.0, 1.0, 1.0)
-            });
-        }
-    }
+    let canvas = ImplicitCanvas {
+        size: (200, 200),
+        pix_width: 3
+    };
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-        // Update the point buffer with a new noise pattern
-        for pt in &mut points {
-            let x = pt.pos[0];
-            let y = pt.pos[1];
-            if anded.sample(Point(x, y)).0 < 0f32 {
-                pt.color = rgb(0, 0, 0);
-            } else {
-                pt.color = rgb(255, 0, 0);
-            }
-        }
-
-        frame.draw_points(&points);
+        println!("hi");
+        canvas.render(&anded, &mut frame);
+        println!("bye");
     }
 }
