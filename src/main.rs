@@ -32,21 +32,28 @@ impl ImplicitCanvas {
         out.into_iter()
     }
 
-    fn draw_points(&self) -> vec::IntoIter<(f32, f32, f32)> {
-        self.sampling_points().map(|(x, y)| {
-            (x * self.draw_scale,
-             y * self.draw_scale,
-             self.resolution as f32 * self.draw_scale)
-        }).collect::<Vec<_>>().into_iter()
+    fn sample_to_draw(&self, (x, y): (f32, f32)) -> (f32, f32, f32) {
+        ((x - 0.5) * self.draw_scale,
+         (y - 0.5) * self.draw_scale,
+         self.resolution as f32 * self.draw_scale)
     }
 
     fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
         let dist = self.resolution as f32;
-        for ((sx, sy), (dx, dy, ds)) in self.sampling_points().zip(self.draw_points()) {
+        for (sx, sy) in self.sampling_points() {
+            let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point(sx, sy));
             frame.square(dx, dy, ds)
                  .color(rgb(sample.0, sample.0, sample.0))
                  .fill();
+            if ds > 5.0 {
+                let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
+                let (dpx, dpy) = (dpx + 0.5 * self.draw_scale * self.resolution as f32,
+                                  dpy + 0.5 * self.draw_scale * self.resolution as f32);
+                frame.square(dpx, dpy, 1.0)
+                     .color(rgb(1.0, 0.0, 0.0))
+                     .fill();
+            }
         }
     }
 }
