@@ -20,10 +20,11 @@ impl ImplicitCanvas {
         let mut x = 0;
         let mut y = 0;
         let mut out = vec![];
+        let res_scale = self.resolution as f32 * 0.5;
 
         while y < self.size.1 {
             while x < self.size.0 {
-                out.push((x as f32 + 0.5, y as f32 + 0.5));
+                out.push((x as f32 + res_scale, y as f32 + res_scale));
                 x += self.resolution;
             }
             x = 0;
@@ -33,23 +34,21 @@ impl ImplicitCanvas {
     }
 
     fn sample_to_draw(&self, (x, y): (f32, f32)) -> (f32, f32, f32) {
-        ((x - 0.5) * self.draw_scale,
-         (y - 0.5) * self.draw_scale,
+        (x * self.draw_scale,
+         y * self.draw_scale,
          self.resolution as f32 * self.draw_scale)
     }
 
     fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        let dist = self.resolution as f32;
+        let draw_scale = self.resolution as f32 * 0.5;
         for (sx, sy) in self.sampling_points() {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point(sx, sy));
-            frame.square(dx, dy, ds)
+            frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(rgb(sample.0, sample.0, sample.0))
                  .fill();
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
-                let (dpx, dpy) = (dpx + 0.5 * self.draw_scale * self.resolution as f32,
-                                  dpy + 0.5 * self.draw_scale * self.resolution as f32);
                 frame.square(dpx, dpy, 1.0)
                      .color(rgb(1.0, 0.0, 0.0))
                      .fill();
