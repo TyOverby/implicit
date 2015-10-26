@@ -2,7 +2,7 @@ mod geom;
 pub use geom::*;
 
 pub trait Implicit {
-    fn sample(&self, pos: Point) -> Scalar;
+    fn sample(&self, pos: Point) -> f32;
     fn bounding_box(&self) -> Rect;
 }
 
@@ -15,7 +15,7 @@ pub enum GenericShape {
 
 pub struct Circle {
     pub center: Point,
-    pub radius: Scalar
+    pub radius: f32
 }
 
 pub struct And<A: Implicit, B: Implicit> {
@@ -34,7 +34,7 @@ pub struct Xor<A: Implicit, B: Implicit> {
 }
 
 impl <A: Implicit> Implicit for Box<A> {
-    fn sample(&self, pos: Point) -> Scalar {
+    fn sample(&self, pos: Point) -> f32 {
         (**self).sample(pos)
     }
 
@@ -44,7 +44,7 @@ impl <A: Implicit> Implicit for Box<A> {
 }
 
 impl Implicit for GenericShape {
-    fn sample(&self, pos: Point) -> Scalar {
+    fn sample(&self, pos: Point) -> f32 {
         match self {
             &GenericShape::Circle(ref circle) => circle.sample(pos),
             &GenericShape::And(ref and) => and.sample(pos),
@@ -64,26 +64,33 @@ impl Implicit for GenericShape {
 }
 
 impl Implicit for Circle {
-    fn sample(&self, pos: Point) -> Scalar {
-        let Point(a, b) = pos;
-        let Point(c, d) = self.center;
+    fn sample(&self, pos: Point) -> f32 {
+        let Point{x: a, y: b} = pos;
+        let Point{x: c, y: d} = self.center;
         let dx = a - c;
         let dy = b - d;
         let dist = (dx * dx + dy * dy).sqrt();
-        Scalar(dist - self.radius.0)
+        dist - self.radius
     }
 
     fn bounding_box(&self) -> Rect {
-        let Point(cx, cy) = self.center;
-        let Scalar(r) = self.radius;
-        Rect(
-            Point(cx - r, cy - r),
-            Point(cx + r, cy + r))
+        let Point{x: cx, y: cy} = self.center;
+        let r = self.radius;
+        Rect {
+            top_left: Point {
+                x: cx - r,
+                y: cy - r
+            },
+            bottom_right: Point{
+                x: cx + r,
+                y: cy + r
+            }
+        }
     }
 }
 
 impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
-    fn sample(&self, pos: Point) -> Scalar {
+    fn sample(&self, pos: Point) -> f32 {
         let left_sample = self.left.sample(pos);
         let right_sample = self.right.sample(pos);
         if left_sample > right_sample {
@@ -100,7 +107,7 @@ impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
 }
 
 impl <A: Implicit, B: Implicit> Implicit for Or<A, B> {
-    fn sample(&self, pos: Point) -> Scalar {
+    fn sample(&self, pos: Point) -> f32 {
         let left_sample = self.left.sample(pos);
         let right_sample = self.right.sample(pos);
         if left_sample < right_sample {
@@ -117,11 +124,11 @@ impl <A: Implicit, B: Implicit> Implicit for Or<A, B> {
 }
 
 impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
-    fn sample(&self, pos: Point) -> Scalar {
+    fn sample(&self, pos: Point) -> f32 {
         let left_sample = self.left.sample(pos);
         let right_sample = self.right.sample(pos);
 
-        if left_sample.0 < 0.0 && right_sample.0 < 0.0 {
+        if left_sample < 0.0 && right_sample < 0.0 {
             if -left_sample < -right_sample {
                 -left_sample
             } else {
