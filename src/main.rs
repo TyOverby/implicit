@@ -49,7 +49,9 @@ impl ImplicitCanvas {
                  .fill();
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
-                frame.square(dpx, dpy, 1.0)
+                let dot_size = ds / 5.0;
+                let dot_offset = dot_size / 2.0;
+                frame.square(dpx - dot_offset, dpy - dot_offset, dot_size)
                      .color(rgb(1.0, 0.0, 0.0))
                      .fill();
             }
