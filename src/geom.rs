@@ -53,6 +53,21 @@ impl Add<Point> for Vector {
 }
 
 impl Rect {
+    pub fn from_points(p1: &Point, p2: &Point) -> Rect {
+        let mut r = Rect::null_at(&p1);
+        r.expand_to_include(&p2);
+        r
+    }
+
+    pub fn from_point_and_size(point: &Point, size: &Vector) -> Rect {
+        assert!(size.x > 0.0);
+        assert!(size.y > 0.0);
+        Rect {
+            top_left: *point,
+            bottom_right: *point + *size
+        }
+    }
+
     pub fn null() -> Rect {
         Rect {
             top_left: Point { x: 0.0, y: 0.0 },
@@ -133,5 +148,39 @@ impl Rect {
             r.expand_to_include(&self.bottom_right);
         }
         r
+    }
+
+    pub fn width(&self) -> f32 {
+        self.bottom_right.x - self.top_left.x
+    }
+
+    pub fn height(&self) -> f32 {
+        self.bottom_right.y - self.top_left.y
+    }
+
+    pub fn split_quad(&self) -> [Rect; 4] {
+        let half = Vector { x: self.width(), y: self.height() };
+        [
+            // x _
+            // _ _
+            Rect::from_point_and_size(
+                &self.top_left,
+                &half),
+            // _ x
+            // _ _
+            Rect::from_point_and_size(
+                &Point { x: self.top_left.x + half.x, y: self.top_left.y },
+                &half),
+            // _ _
+            // x _
+            Rect::from_point_and_size(
+                &Point { x: self.top_left.x, y: self.top_left.y + half.y },
+                &half),
+            // _ _
+            // _ x
+            Rect::from_point_and_size(
+                &(self.top_left + half),
+                &half)
+        ]
     }
 }

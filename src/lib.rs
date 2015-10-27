@@ -1,5 +1,8 @@
 mod geom;
+mod quadtree;
 pub use geom::*;
+pub use quadtree::*;
+
 
 pub trait Implicit {
     /// Returns the distance from a point to the nearest edge of a surface.

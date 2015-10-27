@@ -63,6 +63,16 @@ impl ImplicitCanvas {
                      .fill();
             }
         }
+
+        self.draw_rect(&shape.bounding_box().unwrap(), frame);
+    }
+
+    fn draw_rect(&self, rect: &Rect, frame: &mut Frame) {
+        frame.with_scale(self.draw_scale, self.draw_scale, |frame| {
+            frame.rect(rect.top_left.x, rect.top_left.y, rect.width(), rect.height())
+                 .border(1.0, (0.0, 0.0, 1.0))
+                 .stroke();
+        });
     }
 }
 
@@ -98,7 +108,7 @@ fn main() {
         fn bounding_box(&self) -> Option<Rect> { None }
     }
 
-    let lone_and_stripes = And { left: Stripes, right: lone };
+    let mut lone_and_stripes = And { left: Stripes, right: lone };
 
     let mut canvas = ImplicitCanvas {
         draw_scale: 1.0,
@@ -130,5 +140,7 @@ fn main() {
                 _ => {}
             }
         }
+
+        lone_and_stripes.right.center.x += 1.0
     }
 }
