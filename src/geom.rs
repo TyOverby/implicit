@@ -56,24 +56,24 @@ impl Rect {
     pub fn null() -> Rect {
         Rect {
             top_left: Point { x: 0.0, y: 0.0 },
-            bottom_right: Point { x: 0.0, y: 0.0}
+            bottom_right: Point { x: 0.0, y: 0.0 }
         }
     }
 
-    pub fn null_at(point: Point) -> Rect {
+    pub fn null_at(point: &Point) -> Rect {
         Rect {
-            top_left: point,
-            bottom_right: point,
+            top_left: *point,
+            bottom_right: *point,
         }
     }
 
-    pub fn expanded_by(&self, point: Point) -> Rect {
+    pub fn expanded_by(&self, point: &Point) -> Rect {
         let mut r = self.clone();
         r.expand_to_include(point);
         r
     }
 
-    pub fn expand_to_include(&mut self, point: Point) {
+    pub fn expand_to_include(&mut self, point: &Point) {
         if point.x < self.top_left.x {
             self.top_left.x = point.x;
         }
@@ -89,17 +89,49 @@ impl Rect {
         }
     }
 
-    pub fn merged_with(&self, other: &Rect) -> Rect {
+    pub fn union_with(&self, other: &Rect) -> Rect {
         let mut r = self.clone();
-        r.expand_to_include(other.top_left);
-        r.expand_to_include(other.bottom_right);
+        r.expand_to_include(&other.top_left);
+        r.expand_to_include(&other.bottom_right);
         r
     }
 
     pub fn contains(&self, p: &Point) -> bool {
-        p.x >= self.top_left.x &&
-        p.x <= self.bottom_right.x &&
-        p.y >= self.top_left.y &&
-        p.y <= self.bottom_right.y
+        p.x > self.top_left.x &&
+        p.x < self.bottom_right.x &&
+        p.y > self.top_left.y &&
+        p.y < self.bottom_right.y
+    }
+
+    pub fn intersect_with(&self, other: &Rect) -> Rect {
+        let mut r = Rect::null();
+        let mut added = 0;
+        if self.contains(&other.top_left) {
+            r.expand_to_include(&other.top_left);
+            added += 1;
+        }
+        if self.contains(&other.bottom_right) {
+            r.expand_to_include(&other.bottom_right);
+            added += 1;
+        }
+
+        // Bail early if we've already found the intersection
+        if added == 2 {
+            return r;
+        }
+
+        if other.contains(&self.top_left) {
+            r.expand_to_include(&self.top_left);
+        }
+
+        // Bail early if we've already found the intersection
+        if added == 2 {
+            return r;
+        }
+
+        if other.contains(&self.bottom_right) {
+            r.expand_to_include(&self.bottom_right);
+        }
+        r
     }
 }

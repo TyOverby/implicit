@@ -101,8 +101,9 @@ impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
     }
 
     fn bounding_box(&self) -> Rect {
-        // TODO: actually and the bounding boxes
-        self.left.bounding_box()
+        let left_bb = self.left.bounding_box();
+        let right_bb = self.right.bounding_box();
+        left_bb.intersect_with(&right_bb)
     }
 }
 
@@ -118,8 +119,9 @@ impl <A: Implicit, B: Implicit> Implicit for Or<A, B> {
     }
 
     fn bounding_box(&self) -> Rect {
-        // TODO: actually and the bounding boxes
-        self.left.bounding_box()
+        let left_bb = self.left.bounding_box();
+        let right_bb = self.right.bounding_box();
+        left_bb.union_with(&right_bb)
     }
 }
 
@@ -144,7 +146,8 @@ impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
     }
 
     fn bounding_box(&self) -> Rect {
-        // TODO: actually and the bounding boxes
-        self.left.bounding_box()
+        let left_bb = self.left.bounding_box();
+        let right_bb = self.right.bounding_box();
+        left_bb.union_with(&right_bb)
     }
 }
