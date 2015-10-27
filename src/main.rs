@@ -40,7 +40,6 @@ impl ImplicitCanvas {
     }
 
     fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        let draw_scale = self.resolution as f32 * 0.5;
         for (sx, sy) in self.sampling_points() {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );

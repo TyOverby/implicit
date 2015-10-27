@@ -2,8 +2,17 @@ mod geom;
 pub use geom::*;
 
 pub trait Implicit {
+    /// Returns the distance from a point to the nearest edge of a surface.
+    ///
+    /// If the point is outside of the surface, return a positive number.
+    /// If the point is inside of the surface, return a negative number.
+    /// If the point is on the line, return 0.
     fn sample(&self, pos: Point) -> f32;
-    fn bounding_box(&self) -> Rect;
+
+    /// Returns a bounding box that surrounds a shape (if one exists).
+    ///
+    /// If the shape is infinite, return None.
+    fn bounding_box(&self) -> Option<Rect>;
 }
 
 pub enum GenericShape {
@@ -38,7 +47,7 @@ impl <A: Implicit> Implicit for Box<A> {
         (**self).sample(pos)
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> Option<Rect> {
         (**self).bounding_box()
     }
 }
@@ -53,7 +62,7 @@ impl Implicit for GenericShape {
         }
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> Option<Rect> {
         match self {
             &GenericShape::Circle(ref circle) => circle.bounding_box(),
             &GenericShape::And(ref and) => and.bounding_box(),
@@ -73,10 +82,10 @@ impl Implicit for Circle {
         dist - self.radius
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> Option<Rect> {
         let Point{x: cx, y: cy} = self.center;
         let r = self.radius;
-        Rect {
+        Some(Rect {
             top_left: Point {
                 x: cx - r,
                 y: cy - r
@@ -85,7 +94,7 @@ impl Implicit for Circle {
                 x: cx + r,
                 y: cy + r
             }
-        }
+        })
     }
 }
 
@@ -100,10 +109,16 @@ impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
         }
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> Option<Rect> {
         let left_bb = self.left.bounding_box();
         let right_bb = self.right.bounding_box();
-        left_bb.intersect_with(&right_bb)
+
+        match (left_bb, right_bb) {
+            (Some(left_bb), Some(right_bb)) => Some(left_bb.intersect_with(&right_bb)),
+            (Some(left_bb), None) => Some(left_bb),
+            (None, Some(right_bb)) => Some(right_bb),
+            (None, None) => None
+        }
     }
 }
 
@@ -118,10 +133,13 @@ impl <A: Implicit, B: Implicit> Implicit for Or<A, B> {
         }
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> Option<Rect> {
         let left_bb = self.left.bounding_box();
         let right_bb = self.right.bounding_box();
-        left_bb.union_with(&right_bb)
+        match (left_bb, right_bb) {
+            (Some(left_bb), Some(right_bb)) => Some(left_bb.union_with(&right_bb)),
+            (_, _) => None
+        }
     }
 }
 
@@ -145,9 +163,12 @@ impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
         }
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> Option<Rect> {
         let left_bb = self.left.bounding_box();
         let right_bb = self.right.bounding_box();
-        left_bb.union_with(&right_bb)
+        match (left_bb, right_bb) {
+            (Some(left_bb), Some(right_bb)) => Some(left_bb.union_with(&right_bb)),
+            (_, _) => None
+        }
     }
 }
