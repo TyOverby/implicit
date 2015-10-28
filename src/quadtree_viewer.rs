@@ -7,9 +7,16 @@ use lux::interactive::Event;
 
 use implicit::*;
 
-enum Mode {
+#[derive(Eq, PartialEq, Clone, Copy)]
+enum AddMode {
     Draw,
     Query
+}
+
+#[derive(Eq, PartialEq, Clone, Copy)]
+enum QueryMode {
+    List,
+    Tree
 }
 
 fn draw_rectangle(frame: &mut Frame, rect: &Rect, color: (f32, f32, f32)) {
@@ -19,11 +26,27 @@ fn draw_rectangle(frame: &mut Frame, rect: &Rect, color: (f32, f32, f32)) {
          .stroke();
 }
 
+fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
+    frame.text("[d]raw add_mode", 20.0, 20.0)
+         .color(if add_mode == AddMode::Draw { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
+         .draw().unwrap();
+    frame.text("[q]uery add_mode", 20.0, 40.0)
+         .color(if add_mode == AddMode::Query { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
+         .draw().unwrap();
+    frame.text("[l]ist query", 20.0, 80.0)
+         .color(if query_mode == QueryMode::List { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
+         .draw().unwrap();
+    frame.text("[t]ree query", 20.0, 100.0)
+         .color(if query_mode == QueryMode::Tree { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
+         .draw().unwrap();
+}
+
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
     let mut last_down_position = None;
     let mut rects = vec![];
-    let mut mode = Mode::Draw;
+    let mut add_mode = AddMode::Draw;
+    let mut query_mode = QueryMode::List;
     let mut query = None;
 
     while window.is_open() {
@@ -32,10 +55,16 @@ fn main() {
         for event in window.events() {
             match event {
                 Event::KeyReleased(_, Some('d'), _) => {
-                    mode = Mode::Draw;
+                    add_mode = AddMode::Draw;
                 }
                 Event::KeyReleased(_, Some('q'), _) => {
-                    mode = Mode::Query;
+                    add_mode = AddMode::Query;
+                }
+                Event::KeyReleased(_, Some('l'), _) => {
+                    query_mode = QueryMode::List;
+                }
+                Event::KeyReleased(_, Some('t'), _) => {
+                    query_mode = QueryMode::Tree;
                 }
                 Event::MouseDown(_) => {
                     last_down_position = Some(window.mouse_pos());
@@ -54,13 +83,13 @@ fn main() {
             }
         }
 
-        match mode {
-            Mode::Draw => {
+        match add_mode {
+            AddMode::Draw => {
                 if let Some(r) = this_rect {
                     rects.push(r);
                 }
             }
-            Mode::Query => {
+            AddMode::Query => {
                 if let Some(r) = this_rect {
                     query = Some(r);
                 }
@@ -82,6 +111,8 @@ fn main() {
         if let Some(query) = query.as_ref() {
             draw_rectangle(&mut frame, query, (0.0, 0.5, 0.0));
         }
+
+        draw_help_text(&mut frame, add_mode, query_mode);
     }
 
 }
