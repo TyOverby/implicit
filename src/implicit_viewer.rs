@@ -143,4 +143,5 @@ fn main() {
 
         lone_and_stripes.right.center.x += 1.0
     }
+
 }

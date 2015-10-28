@@ -82,6 +82,53 @@ impl Rect {
         }
     }
 
+    pub fn width(&self) -> f32 {
+        self.bottom_right.x - self.top_left.x
+    }
+
+    pub fn height(&self) -> f32 {
+        self.bottom_right.y - self.top_left.y
+    }
+
+    fn left(&self) -> f32 {
+        self.top_left.x
+    }
+
+    fn right(&self) -> f32 {
+        self.bottom_right.x
+    }
+
+    fn top(&self) -> f32 {
+        self.top_left.y
+    }
+
+    fn bottom(&self) -> f32 {
+        self.bottom_right.y
+    }
+
+    pub fn top_left(&self) -> Point {
+        self.top_left
+    }
+
+    pub fn bottom_right(&self) -> Point {
+        self.bottom_right
+    }
+
+    pub fn bottom_left(&self) -> Point {
+        Point {
+            x: self.top_left().x,
+            y: self.bottom_right().y
+        }
+    }
+
+    pub fn top_right(&self) -> Point {
+        Point {
+            x: self.bottom_right().x,
+            y: self.top_left().y
+        }
+    }
+
+
     pub fn expanded_by(&self, point: &Point) -> Rect {
         let mut r = self.clone();
         r.expand_to_include(point);
@@ -119,10 +166,13 @@ impl Rect {
     }
 
     pub fn does_intersect(&self, other: &Rect) -> bool{
-        other.contains(&self.top_left) ||
-        other.contains(&self.bottom_right) ||
-        self.contains(&other.top_left) ||
-        self.contains(&other.bottom_right)
+        let r1 = self;
+        let r2 = other;
+
+        !( r2.left() > r1.right()
+        || r2.right() < r1.left()
+        || r2.top() > r1.bottom()
+        || r2.bottom() < r1.top())
     }
 
     pub fn intersect_with(&self, other: &Rect) -> Rect {
@@ -155,14 +205,6 @@ impl Rect {
             r.expand_to_include(&self.bottom_right);
         }
         r
-    }
-
-    pub fn width(&self) -> f32 {
-        self.bottom_right.x - self.top_left.x
-    }
-
-    pub fn height(&self) -> f32 {
-        self.bottom_right.y - self.top_left.y
     }
 
     pub fn split_quad(&self) -> [Rect; 4] {
