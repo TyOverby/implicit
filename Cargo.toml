@@ -7,5 +7,9 @@ authors = ["Ty Overby <ty@pre-alpha.com>"]
 path = "../lux"
 
 [[bin]]
-name = "viewer"
-path = "./src/main.rs"
+name = "implicit-viewer"
+path = "./src/implicit_viewer.rs"
+
+[[bin]]
+name = "quadtree-viewer"
+path = "./src/quadtree_viewer.rs"
