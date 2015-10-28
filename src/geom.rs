@@ -170,6 +170,8 @@ impl Rect {
         let r1 = self;
         let r2 = other;
 
+        // From stack overflow:
+        // http://gamedev.stackexchange.com/a/913
         !( r2.left() > r1.right()
         || r2.right() < r1.left()
         || r2.top() > r1.bottom()
