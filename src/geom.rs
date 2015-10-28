@@ -118,6 +118,13 @@ impl Rect {
         p.y < self.bottom_right.y
     }
 
+    pub fn does_intersect(&self, other: &Rect) -> bool{
+        other.contains(&self.top_left) ||
+        other.contains(&self.bottom_right) ||
+        self.contains(&other.top_left) ||
+        self.contains(&other.bottom_right)
+    }
+
     pub fn intersect_with(&self, other: &Rect) -> Rect {
         let mut r = Rect::null();
         let mut added = 0;
