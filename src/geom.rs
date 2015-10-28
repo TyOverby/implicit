@@ -69,9 +69,10 @@ impl Rect {
     }
 
     pub fn null() -> Rect {
+        let nan = ::std::f32::NAN;
         Rect {
-            top_left: Point { x: 0.0, y: 0.0 },
-            bottom_right: Point { x: 0.0, y: 0.0 }
+            top_left: Point {x: nan, y: nan},
+            bottom_right: Point {x: nan, y: nan}
         }
     }
 

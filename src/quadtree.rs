@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use super::geom::Rect;
+use super::geom::{Rect, Point, Line};
 
 pub trait Spatial {
     fn aabb(&self) -> Rect;
@@ -182,5 +182,23 @@ impl QuadNode {
                 }
             }
         }
+    }
+}
+
+impl Spatial for Rect {
+    fn aabb(&self) -> Rect {
+        *self
+    }
+}
+
+impl Spatial for Point {
+    fn aabb(&self) -> Rect {
+        Rect::null_at(self)
+    }
+}
+
+impl Spatial for Line {
+    fn aabb(&self) -> Rect {
+        Rect::from_points(&self.0, &self.1)
     }
 }

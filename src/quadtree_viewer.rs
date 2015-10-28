@@ -114,5 +114,4 @@ fn main() {
 
         draw_help_text(&mut frame, add_mode, query_mode);
     }
-
 }
