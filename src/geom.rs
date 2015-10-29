@@ -210,6 +210,11 @@ impl Rect {
         r
     }
 
+    pub fn midpoint(&self) -> Point {
+        let half = Vector { x: self.width() / 2.0, y: self.height() / 2.0 };
+        self.top_left() + half
+    }
+
     pub fn split_quad(&self) -> [Rect; 4] {
         let half = Vector { x: self.width() / 2.0, y: self.height() / 2.0 };
         [

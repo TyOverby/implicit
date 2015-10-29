@@ -28,6 +28,7 @@ enum QuadNode {
     Branch {
         aabb: Rect,
         children: [(Rect, Box<QuadNode>); 4],
+        in_all: Vec<(ItemId, Rect)>,
         element_count: usize,
         depth: usize,
     },
@@ -127,10 +128,14 @@ impl QuadNode {
     fn insert(&mut self, item_id: ItemId, item_aabb: Rect, config: &QuadTreeConfig) {
         let mut into = None;
         match self {
-            &mut QuadNode::Branch { ref mut children, ref mut element_count, .. } => {
-                for &mut (ref aabb, ref mut child) in children {
-                    if aabb.does_intersect(&item_aabb) {
-                        child.insert(item_id, item_aabb, config);
+            &mut QuadNode::Branch { ref aabb, ref mut in_all, ref mut children, ref mut element_count, .. } => {
+                if item_aabb.contains(&aabb.midpoint()) {
+                    in_all.push((item_id, item_aabb));
+                } else {
+                    for &mut (ref aabb, ref mut child) in children {
+                        if aabb.does_intersect(&item_aabb) {
+                            child.insert(item_id, item_aabb, config);
+                        }
                     }
                 }
                 *element_count += 1;
@@ -146,6 +151,7 @@ impl QuadNode {
                     let split = aabb.split_quad();
                     into = Some((extracted_children, QuadNode::Branch {
                         aabb: *aabb,
+                        in_all: Vec::new(),
                         children: [
                             (split[0], Box::new(QuadNode::new_leaf(split[0], depth + 1, config))),
                             (split[1], Box::new(QuadNode::new_leaf(split[1], depth + 1, config))),
@@ -173,14 +179,27 @@ impl QuadNode {
     }
 
     fn remove(&mut self, item_id: ItemId, item_aabb: Rect, config: &QuadTreeConfig) -> bool {
+        fn remove_from(v: &mut Vec<(ItemId, Rect)>, item: ItemId) -> bool {
+            if let Some(index) = v.iter().position(|a| a.0 == item) {
+                v.swap_remove(index);
+                true
+            } else {
+                false
+            }
+        }
+
         let mut compact = None;
         let removed = match self {
-            &mut QuadNode::Branch { ref depth, ref aabb, ref mut children, ref mut element_count, .. } => {
+            &mut QuadNode::Branch { ref depth, ref aabb, ref mut in_all, ref mut children, ref mut element_count, .. } => {
                 let mut did_remove = false;
 
-                for &mut (ref child_aabb, ref mut child_tree) in children {
-                    if child_aabb.does_intersect(&item_aabb) {
-                        did_remove |= child_tree.remove(item_id, item_aabb, config);
+                if item_aabb.contains(&aabb.midpoint()) {
+                    did_remove = remove_from(in_all, item_id);
+                } else {
+                    for &mut (ref child_aabb, ref mut child_tree) in children {
+                        if child_aabb.does_intersect(&item_aabb) {
+                            did_remove |= child_tree.remove(item_id, item_aabb, config);
+                        }
                     }
                 }
 
@@ -193,12 +212,7 @@ impl QuadNode {
                 did_remove
             }
 
-            &mut QuadNode::Leaf { ref mut elements, ..} => {
-                let len_before = elements.len();
-                elements.retain(|a| a.0 == item_id);
-                let len_after = elements.len();
-                len_before != len_after
-            }
+            &mut QuadNode::Leaf { ref mut elements, ..} => remove_from(elements, item_id)
         };
 
         if let Some((size, aabb, depth)) = compact {
@@ -213,22 +227,27 @@ impl QuadNode {
         removed
     }
 
-    fn query(&self, aabb: Rect, out: &mut Vec<(ItemId, Rect)>) {
+    fn query(&self, query_aabb: Rect, out: &mut Vec<(ItemId, Rect)>) {
+        fn match_all(elements: &Vec<(ItemId, Rect)>, query_aabb: Rect, out: &mut Vec<(ItemId, Rect)>) {
+            for &(ref child_id, ref child_aabb) in elements {
+                if query_aabb.does_intersect(child_aabb) {
+                    out.push((*child_id, *child_aabb))
+                }
+            }
+        }
+
         match self {
-            &QuadNode::Branch { ref children, .. } => {
+            &QuadNode::Branch { ref in_all, ref children, .. } => {
+                match_all(in_all, query_aabb, out);
+
                 for &(ref child_aabb, ref child_tree) in children {
-                    if aabb.does_intersect(&child_aabb) {
-                        child_tree.query(aabb, out);
+                    if query_aabb.does_intersect(&child_aabb) {
+                        child_tree.query(query_aabb, out);
                     }
                 }
             }
-            &QuadNode::Leaf { ref elements, .. } => {
-                for &(ref child_id, ref child_aabb) in elements {
-                    if aabb.does_intersect(child_aabb) {
-                        out.push((*child_id, *child_aabb))
-                    }
-                }
-            }
+            &QuadNode::Leaf { ref elements, .. } =>
+                match_all(elements, query_aabb, out)
         }
     }
 }
