@@ -41,6 +41,52 @@ fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
          .draw().unwrap();
 }
 
+fn draw_tree_query(rects: &[Rect], query: Option<&Rect>, frame: &mut Frame) {
+    let size = Rect::from_point_and_size(
+        &Point {
+            x: 0.0,
+            y: 0.0
+        },
+        &Vector {
+            x: frame.width(),
+            y: frame.height()
+        });
+    let mut quadtree = QuadTree::default(size);
+
+    for rect in rects {
+        quadtree.insert(*rect);
+    }
+
+    for (_, &(ref rect, _)) in quadtree.iter() {
+        draw_rectangle(frame, rect, (0.0, 0.0, 0.0));
+    }
+
+    if let Some(query) = query {
+        for &(ref rect, _) in quadtree.query(*query) {
+            draw_rectangle(frame, rect, (0.0, 0.0, 0.5));
+        }
+    }
+
+    quadtree.inspect(|rect, _, _| {
+        draw_rectangle(frame, rect, (0.5, 0.0, 0.0));
+    });
+
+}
+
+fn draw_list_query(rects: &[Rect], query: Option<&Rect>, frame: &mut Frame) {
+    for rect in rects {
+        if let Some(query) = query {
+            if query.does_intersect(rect) {
+                draw_rectangle(frame, rect, (0.0, 0.0, 0.5));
+            } else {
+                draw_rectangle(frame, rect, (0.0, 0.0, 0.0));
+            }
+        } else {
+            draw_rectangle(frame, rect, (0.0, 0.0, 0.0));
+        }
+    }
+}
+
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
     let mut last_down_position = None;
@@ -50,6 +96,7 @@ fn main() {
     let mut query = None;
 
     while window.is_open() {
+        let mut frame = window.cleared_frame(color::WHITE);
         let cur_pos = window.mouse_pos();
         let mut this_rect = None;
         for event in window.events() {
@@ -83,31 +130,21 @@ fn main() {
             }
         }
 
-        match add_mode {
-            AddMode::Draw => {
-                if let Some(r) = this_rect {
-                    rects.push(r);
-                }
+        match (add_mode, this_rect) {
+            (AddMode::Draw, Some(r)) => {
+                rects.push(r);
             }
-            AddMode::Query => {
-                if let Some(r) = this_rect {
-                    query = Some(r);
-                }
+            (AddMode::Query, Some(r)) => {
+                query = Some(r);
             }
+            _ => {  }
         }
 
-        let mut frame = window.cleared_frame(color::WHITE);
-        for rect in &rects {
-            if let Some(query) = query.as_ref() {
-                if query.does_intersect(rect) {
-                    draw_rectangle(&mut frame, rect, (0.0, 0.0, 0.5));
-                } else {
-                    draw_rectangle(&mut frame, rect, (0.0, 0.0, 0.0));
-                }
-            } else {
-                draw_rectangle(&mut frame, rect, (0.0, 0.0, 0.0));
-            }
+        match query_mode {
+            QueryMode::List => draw_list_query(&rects[..], query.as_ref(), &mut frame),
+            QueryMode::Tree => draw_tree_query(&rects[..], query.as_ref(), &mut frame),
         }
+
         if let Some(query) = query.as_ref() {
             draw_rectangle(&mut frame, query, (0.0, 0.5, 0.0));
         }

@@ -5,15 +5,17 @@ pub trait Spatial {
     fn aabb(&self) -> Rect;
 }
 
-#[derive(Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub struct ItemId(u32);
 
+#[derive(Debug)]
 struct QuadTreeConfig {
     max_children: usize,
     min_children: usize,
     max_depth: usize,
 }
 
+#[derive(Debug)]
 pub struct QuadTree<T> {
     root: QuadNode,
     config: QuadTreeConfig,
@@ -21,6 +23,7 @@ pub struct QuadTree<T> {
     elements: HashMap<ItemId, (T, Rect)>
 }
 
+#[derive(Debug)]
 enum QuadNode {
     Branch {
         aabb: Rect,
@@ -36,6 +39,27 @@ enum QuadNode {
 }
 
 impl <T> QuadTree<T> {
+    pub fn new(size: Rect, min_children: usize, max_children: usize, max_depth: usize) -> QuadTree<T> {
+        QuadTree {
+            root: QuadNode::Leaf {
+                aabb: size,
+                elements: Vec::with_capacity(max_children),
+                depth: 0,
+            },
+            config: QuadTreeConfig {
+                max_children: max_children,
+                min_children: min_children,
+                max_depth: max_depth,
+            },
+            id: 0,
+            elements: HashMap::with_capacity(max_children * 16)
+        }
+    }
+
+    pub fn default(size: Rect) -> QuadTree<T> {
+        QuadTree::new(size, 1, 3, 4)
+    }
+
     pub fn insert_with_box(&mut self, t: T, aabb: Rect) -> ItemId {
         let &mut QuadTree { ref mut root, ref config, ref mut id, ref mut elements } = self;
 
@@ -67,6 +91,14 @@ impl <T> QuadTree<T> {
             None => None
         }
     }
+
+    pub fn iter(&self) -> ::std::collections::hash_map::Iter<ItemId, (T, Rect)> {
+        self.elements.iter()
+    }
+
+    pub fn inspect<F: FnMut(&Rect, usize, bool)>(&self, mut f: F) {
+        self.root.inspect(&mut f);
+    }
 }
 
 impl QuadNode {
@@ -75,6 +107,20 @@ impl QuadNode {
             aabb: aabb,
             elements: Vec::with_capacity(config.max_children / 2),
             depth: depth
+        }
+    }
+
+    fn inspect<F: FnMut(&Rect, usize, bool)>(&self, f: &mut F) {
+        match self {
+            &QuadNode::Branch { ref depth, ref aabb, ref children, .. } => {
+                f(aabb, *depth, false);
+                for child in children {
+                    child.1.inspect(f);
+                }
+            }
+            &QuadNode::Leaf { ref depth, ref aabb, .. } => {
+                f(aabb, *depth, true);
+            }
         }
     }
 
@@ -95,6 +141,7 @@ impl QuadNode {
                     // STEAL ALL THE CHILDREN MUAHAHAHAHA
                     let mut extracted_children = Vec::new();
                     ::std::mem::swap(&mut extracted_children, elements);
+                    extracted_children.push((item_id, item_aabb));
 
                     let split = aabb.split_quad();
                     into = Some((extracted_children, QuadNode::Branch {
@@ -130,6 +177,7 @@ impl QuadNode {
         let removed = match self {
             &mut QuadNode::Branch { ref depth, ref aabb, ref mut children, ref mut element_count, .. } => {
                 let mut did_remove = false;
+
                 for &mut (ref child_aabb, ref mut child_tree) in children {
                     if child_aabb.does_intersect(&item_aabb) {
                         did_remove |= child_tree.remove(item_id, item_aabb, config);

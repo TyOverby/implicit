@@ -1,21 +1,21 @@
 use std::ops::{Neg, Add};
 
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Vector {
     pub x: f32,
     pub y: f32
 }
 
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Line(pub Point, pub Point);
 
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Rect
 {
     pub top_left: Point,
@@ -211,7 +211,7 @@ impl Rect {
     }
 
     pub fn split_quad(&self) -> [Rect; 4] {
-        let half = Vector { x: self.width(), y: self.height() };
+        let half = Vector { x: self.width() / 2.0, y: self.height() / 2.0 };
         [
             // x _
             // _ _
@@ -221,12 +221,12 @@ impl Rect {
             // _ x
             // _ _
             Rect::from_point_and_size(
-                &Point { x: self.top_left.x + half.x, y: self.top_left.y },
+                &Point { x: self.top_left.x + half.x, .. self.top_left},
                 &half),
             // _ _
             // x _
             Rect::from_point_and_size(
-                &Point { x: self.top_left.x, y: self.top_left.y + half.y },
+                &Point { y: self.top_left.y + half.y, .. self.top_left },
                 &half),
             // _ _
             // _ x
