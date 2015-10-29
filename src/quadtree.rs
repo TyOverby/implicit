@@ -58,7 +58,7 @@ impl <T> QuadTree<T> {
     }
 
     pub fn default(size: Rect) -> QuadTree<T> {
-        QuadTree::new(size, 1, 3, 4)
+        QuadTree::new(size, 4, 16, 8)
     }
 
     pub fn insert_with_box(&mut self, t: T, aabb: Rect) -> ItemId {

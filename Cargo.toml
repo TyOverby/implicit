@@ -6,6 +6,9 @@ authors = ["Ty Overby <ty@pre-alpha.com>"]
 [dependencies.lux]
 path = "../lux"
 
+[dependencies]
+rand = "0.3"
+
 [[bin]]
 name = "implicit-viewer"
 path = "./src/implicit_viewer.rs"

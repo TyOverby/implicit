@@ -1,9 +1,12 @@
 extern crate implicit;
 extern crate lux;
+extern crate rand;
 
 use lux::prelude::*;
 use lux::color;
 use lux::interactive::Event;
+
+use rand::{thread_rng, Rng};
 
 use implicit::*;
 
@@ -51,6 +54,7 @@ fn draw_tree_query(rects: &[Rect], query: Option<&Rect>, frame: &mut Frame) {
             x: frame.width(),
             y: frame.height()
         });
+
     let mut quadtree = QuadTree::default(size);
 
     for rect in rects {
@@ -94,6 +98,20 @@ fn main() {
     let mut add_mode = AddMode::Draw;
     let mut query_mode = QueryMode::List;
     let mut query = None;
+
+    for _ in 0 .. 1_000 {
+        let x1 = thread_rng().gen::<f32>() * window.width();
+        let y1 = thread_rng().gen::<f32>() * window.height();
+        let x2 = thread_rng().gen::<f32>() * window.width() / 10.0;
+        let y2 = thread_rng().gen::<f32>() * window.height() / 10.0;
+
+        let p1 = Point { x: x1, y: y1 };
+        let v = Vector { x: x2, y: y2 };
+        let p2 = p1 + v;
+
+        let rect = Rect::from_points(&p1, &p2);
+        rects.push(rect);
+    }
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
@@ -147,6 +165,14 @@ fn main() {
 
         if let Some(query) = query.as_ref() {
             draw_rectangle(&mut frame, query, (0.0, 0.5, 0.0));
+        }
+
+        if let Some(last_down) = last_down_position {
+            let rect = Rect::from_points(
+                &Point { x: last_down.0, y: last_down.1 },
+                &Point { x: cur_pos.0, y: cur_pos.1 }
+            );
+            draw_rectangle(&mut frame, &rect, (0.8, 0.8, 0.8));
         }
 
         draw_help_text(&mut frame, add_mode, query_mode);
