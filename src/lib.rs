@@ -23,26 +23,37 @@ pub enum GenericShape {
     And(And<Box<GenericShape>, Box<GenericShape>>),
     Or(Or<Box<GenericShape>, Box<GenericShape>>),
     Xor(Xor<Box<GenericShape>, Box<GenericShape>>),
+    Boundary(Boundary<Box<GenericShape>>),
 }
 
+#[derive(Copy, Clone)]
 pub struct Circle {
     pub center: Point,
     pub radius: f32
 }
 
+#[derive(Copy, Clone)]
 pub struct And<A: Implicit, B: Implicit> {
     pub left: A,
     pub right: B,
 }
 
+#[derive(Copy, Clone)]
 pub struct Or<A: Implicit, B: Implicit> {
     pub left: A,
     pub right: B,
 }
 
+#[derive(Copy, Clone)]
 pub struct Xor<A: Implicit, B: Implicit> {
     pub left: A,
     pub right: B,
+}
+
+#[derive(Copy, Clone)]
+pub struct Boundary<A: Implicit> {
+    pub target: A,
+    pub move_by: f32
 }
 
 impl <A: Implicit> Implicit for Box<A> {
@@ -62,6 +73,7 @@ impl Implicit for GenericShape {
             &GenericShape::And(ref and) => and.sample(pos),
             &GenericShape::Or(ref or) => or.sample(pos),
             &GenericShape::Xor(ref xor) => xor.sample(pos),
+            &GenericShape::Boundary(ref b) => b.sample(pos),
         }
     }
 
@@ -71,6 +83,7 @@ impl Implicit for GenericShape {
             &GenericShape::And(ref and) => and.bounding_box(),
             &GenericShape::Or(ref or) => or.bounding_box(),
             &GenericShape::Xor(ref xor) => xor.bounding_box(),
+            &GenericShape::Boundary(ref b) => b.bounding_box(),
         }
     }
 }
@@ -151,15 +164,24 @@ impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
         let left_sample = self.left.sample(pos);
         let right_sample = self.right.sample(pos);
 
+        // Both are contained
         if left_sample < 0.0 && right_sample < 0.0 {
-            if -left_sample < -right_sample {
-                -left_sample
-            } else {
+            (-left_sample).min(-right_sample)
+        // Neither are contained
+        } else if left_sample > 0.0 && right_sample > 0.0 {
+            (left_sample).min(right_sample)
+        }
+        // Contained on the left, not on the right
+        else if left_sample < right_sample {
+            if -left_sample > right_sample {
                 -right_sample
-            }
-        } else {
-            if left_sample < right_sample {
+            } else {
                 left_sample
+            }
+        // Contained on the right, not on the left
+        } else {
+            if -right_sample > left_sample {
+                -left_sample
             } else {
                 right_sample
             }
@@ -173,5 +195,15 @@ impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
             (Some(left_bb), Some(right_bb)) => Some(left_bb.union_with(&right_bb)),
             (_, _) => None
         }
+    }
+}
+
+impl <A: Implicit> Implicit for Boundary<A> {
+    fn sample(&self, pos: Point) -> f32 {
+        self.target.sample(pos) + self.move_by
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        self.target.bounding_box()
     }
 }

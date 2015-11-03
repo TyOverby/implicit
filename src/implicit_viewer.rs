@@ -51,8 +51,14 @@ impl ImplicitCanvas {
         for (sx, sy) in self.sampling_points(shape) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
+            let color = if sample > 0.0 {
+                rgb(sample / 10.0, 0.0, 0.0)
+            } else {
+                rgb(0.0, -sample / 10.0, 0.0)
+            };
+            let color = rgb(sample, sample, sample);
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
-                 .color(rgb(sample, sample, sample))
+                 .color(color)
                  .fill();
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
@@ -89,14 +95,29 @@ fn main() {
         radius: 50.0
     };
 
-    let anded = Xor {
+    let circle_3 = Circle {
+        center: Point { x: 125.0, y: 150.0 },
+        radius: 50.0
+    };
+
+    let xored = Xor {
         left: circle_1,
         right: circle_2
+    };
+
+    let xored = Xor {
+        left: xored,
+        right: circle_3
     };
 
     let lone = Circle {
         center: Point { x: 125.0, y: 200.0 },
         radius: 50.0
+    };
+
+    let modified = Boundary {
+        target: xored,
+        move_by: 10.0
     };
 
     struct Stripes;
@@ -117,7 +138,7 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-        canvas.render_pix(&anded, &mut frame);
+        canvas.render_pix(&modified, &mut frame);
         canvas.render_pix(&lone_and_stripes, &mut frame);
 
         for event in window.events() {
