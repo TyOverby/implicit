@@ -1,6 +1,8 @@
 extern crate implicit;
 extern crate lux;
 
+mod examples;
+
 use std::vec;
 
 use lux::prelude::*;
@@ -87,82 +89,14 @@ impl ImplicitCanvas {
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
 
-    let circle_1 = Circle {
-        center: Point { x: 100.0, y: 100.0 },
-        radius: 50.0
-    };
-
-    let circle_2 = Circle {
-        center: Point { x:  150.0, y: 100.0 },
-        radius: 50.0
-    };
-
-    let circle_3 = Circle {
-        center: Point { x: 125.0, y: 150.0 },
-        radius: 50.0
-    };
-
-    let xored = Xor {
-        left: circle_1,
-        right: circle_2
-    };
-
-    let xored = Xor {
-        left: xored,
-        right: circle_3
-    };
-
-    let lone = Circle {
-        center: Point { x: 125.0, y: 200.0 },
-        radius: 50.0
-    };
+    let xored = examples::xored_circles();
+    let mut stripes = examples::stripes();
+    let poly = examples::poly();
 
     let modified = Boundary {
         target: xored,
         move_by: -10.0
     };
-
-    let poly = Polygon::new(vec![
-                       Point { x: 50.0, y: 50.0 },
-                       Point { x: 200.0, y: 200.0 },
-                       Point {x: 50.0, y: 200.0 },
-                       ].into_iter());
-    let poly = BoxCache::new(poly);
-
-    let poly_outer = Boundary {
-        target: poly.clone(),
-        move_by: 10.0
-    };
-
-    let poly_inner = Boundary {
-        target: poly,
-        move_by: 50.0
-    };
-
-    let poly = Xor {
-        left: poly_outer,
-        right: poly_inner
-    };
-
-    let mut transform = Transformation {
-        target: poly,
-        matrix: Matrix::new()
-    };
-
-    transform.matrix.translate(50.0, 50.0)
-                    .rotate(0.15)
-                    .scale(1.25, 0.75);
-
-    struct Stripes;
-    impl Implicit for Stripes {
-        fn sample(&self, point: Point) -> f32 {
-            point.x.sin() * point.y.sin()
-        }
-
-        fn bounding_box(&self) -> Option<Rect> { None }
-    }
-
-    let mut lone_and_stripes = And { left: Stripes, right: lone };
 
     let mut canvas = ImplicitCanvas {
         draw_scale: 1.0,
@@ -171,9 +105,11 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
+        /*
         canvas.render_pix(&modified, &mut frame);
         canvas.render_pix(&lone_and_stripes, &mut frame);
-        canvas.render_pix(&transform, &mut frame);
+        */
+        canvas.render_pix(&poly, &mut frame);
 
         for event in window.events() {
             match event {
@@ -196,7 +132,7 @@ fn main() {
             }
         }
 
-        lone_and_stripes.right.center.x += 1.0
+        stripes.right.center.x += 1.0
     }
 
 }

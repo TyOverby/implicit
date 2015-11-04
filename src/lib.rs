@@ -23,6 +23,7 @@ pub trait Implicit {
 
 pub enum GenericShape {
     Circle(Circle),
+    Polygon(Polygon),
     And(And<Box<GenericShape>, Box<GenericShape>>),
     Or(Or<Box<GenericShape>, Box<GenericShape>>),
     Xor(Xor<Box<GenericShape>, Box<GenericShape>>),
@@ -36,6 +37,12 @@ pub enum GenericShape {
 pub struct Circle {
     pub center: Point,
     pub radius: f32
+}
+
+#[derive(Clone)]
+pub struct Rectangle {
+    rect: Rect,
+    poly: Polygon
 }
 
 #[derive(Copy, Clone)]
@@ -128,6 +135,7 @@ impl Implicit for GenericShape {
     fn sample(&self, pos: Point) -> f32 {
         match self {
             &GenericShape::Circle(ref circle) => circle.sample(pos),
+            &GenericShape::Polygon(ref poly) => poly.sample(pos),
             &GenericShape::And(ref and) => and.sample(pos),
             &GenericShape::Or(ref or) => or.sample(pos),
             &GenericShape::Xor(ref xor) => xor.sample(pos),
@@ -141,6 +149,7 @@ impl Implicit for GenericShape {
     fn bounding_box(&self) -> Option<Rect> {
         match self {
             &GenericShape::Circle(ref circle) => circle.bounding_box(),
+            &GenericShape::Polygon(ref poly) => poly.bounding_box(),
             &GenericShape::And(ref and) => and.bounding_box(),
             &GenericShape::Or(ref or) => or.bounding_box(),
             &GenericShape::Xor(ref xor) => xor.bounding_box(),
@@ -326,5 +335,29 @@ impl <A: Implicit> Implicit for Boundary<A> {
 
     fn bounding_box(&self) -> Option<Rect> {
         self.target.bounding_box().map(|r| r.expand(self.move_by, self.move_by, self.move_by, self.move_by))
+    }
+}
+
+impl Rectangle {
+    fn recompute_poly(&mut self) {
+        let v = vec![self.rect.top_left(),
+                     self.rect.top_right(),
+                     self.rect.bottom_right(),
+                     self.rect.bottom_left()];
+        self.poly = Polygon::new(v.into_iter());
+    }
+    pub fn new(rect: Rect) -> Rectangle {
+        let mut r = Rectangle {
+            rect: rect,
+            poly: Polygon::new(vec![].into_iter())
+        };
+        r.recompute_poly();
+        r
+    }
+
+    pub fn with_underlying<R, F: FnOnce(&mut Rect) -> R>(&mut self, f: F) -> R {
+        let r = f(&mut self.rect);
+        self.recompute_poly();
+        r
     }
 }
