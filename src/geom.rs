@@ -1,4 +1,5 @@
 use std::ops::{Neg, Add, Sub, Mul, Div};
+use vecmath::*;
 
 #[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Point {
@@ -29,6 +30,11 @@ pub struct Ray(pub Point, pub Vector);
 pub struct Polygon {
     points: Vec<Point>,
     lines: Vec<Line>,
+}
+
+#[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
+pub struct Matrix {
+    m: [[f32; 3]; 3]
 }
 
 impl Neg for Vector {
@@ -421,5 +427,66 @@ impl Ray {
         } else {
             None
         }
+    }
+}
+
+impl Matrix {
+    pub fn new() -> Matrix {
+        Matrix { m: mat3_id() }
+    }
+
+    pub fn transform_point(&self, point: &Point) -> Point {
+        let p = [point.x, point.y];
+        let p = col_mat3_transform_pos2(self.m, p);
+        Point { x: p[0], y: p[1] }
+    }
+
+    pub fn transform_point_inv(&self, point: &Point) -> Point {
+        let nm = mat3_inv(self.m);
+        let p = [point.x, point.y];
+        let p = col_mat3_transform_pos2(nm, p);
+        Point { x: p[0], y: p[1] }
+    }
+
+    pub fn apply_matrix(&mut self, matrix: [[f32; 3]; 3]) -> &mut Self {
+        {
+            let current = &mut self.m;
+            *current = col_mat3_mul(*current, matrix);
+        }
+        self
+    }
+
+    pub fn translate(&mut self, dx: f32, dy: f32) -> &mut Self {
+        let mut prod = mat3_id();
+        prod[2][0] = dx;
+        prod[2][1] = dy;
+        self.apply_matrix(prod)
+    }
+
+    /// Applies a scaling transformation to the matrix.
+    pub fn scale(&mut self, sx: f32, sy: f32) -> &mut Self {
+        let mut prod = mat3_id();
+        prod[0][0] = sx;
+        prod[1][1] = sy;
+        self.apply_matrix(prod)
+    }
+
+    /// Applies a shearing transformation to the matrix.
+    pub fn shear(&mut self, sx: f32, sy: f32) -> &mut Self {
+        let mut prod = mat3_id();
+        prod[1][0] = sx;
+        prod[0][1] = sy;
+        self.apply_matrix(prod)
+    }
+
+    /// Applies a rotation transformation to the matrix.
+    pub fn rotate(&mut self, theta: f32) -> &mut Self {
+        let mut prod = mat3_id();
+        let (c, s) = (theta.cos(), theta.sin());
+        prod[0][0] = c;
+        prod[0][1] = s;
+        prod[1][0] = -s;
+        prod[1][1] = c;
+        self.apply_matrix(prod)
     }
 }

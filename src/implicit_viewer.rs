@@ -58,7 +58,7 @@ impl ImplicitCanvas {
             } else {
                 rgba(0.0, -sample / factor, 0.0, 0.0)
             };
-            //let color = rgb(sample, sample, sample);
+            let color = rgba(sample, sample, sample, -sample);
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(color)
                  .fill();
@@ -127,6 +127,7 @@ fn main() {
                        Point { x: 200.0, y: 200.0 },
                        Point {x: 50.0, y: 200.0 },
                        ].into_iter());
+    let poly = BoxCache::new(poly);
 
     let poly_outer = Boundary {
         target: poly.clone(),
@@ -138,10 +139,19 @@ fn main() {
         move_by: 50.0
     };
 
-    let poly = Xor{
+    let poly = Xor {
         left: poly_outer,
         right: poly_inner
     };
+
+    let mut transform = Transformation {
+        target: poly,
+        matrix: Matrix::new()
+    };
+
+    transform.matrix.translate(50.0, 50.0)
+                    .rotate(0.15)
+                    .scale(1.25, 0.75);
 
     struct Stripes;
     impl Implicit for Stripes {
@@ -161,10 +171,9 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-//        canvas.render_pix(&modified, &mut frame);
-//        canvas.render_pix(&lone_and_stripes, &mut frame);
-        canvas.render_pix(&poly, &mut frame);
-//        canvas.render_pix(&&poly.lines()[..], &mut frame);
+        canvas.render_pix(&modified, &mut frame);
+        canvas.render_pix(&lone_and_stripes, &mut frame);
+        canvas.render_pix(&transform, &mut frame);
 
         for event in window.events() {
             match event {

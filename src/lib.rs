@@ -1,3 +1,5 @@
+extern crate vecmath;
+
 mod geom;
 mod quadtree;
 pub use geom::*;
@@ -27,6 +29,7 @@ pub enum GenericShape {
     Boundary(Boundary<Box<GenericShape>>),
     Not(Not<Box<GenericShape>>),
     BoxCache(BoxCache<Box<GenericShape>>),
+    Transformation(Transformation<Box<GenericShape>>),
 }
 
 #[derive(Copy, Clone)]
@@ -64,18 +67,50 @@ pub struct Not<A: Implicit> {
     pub target: A,
 }
 
+#[derive(Copy, Clone)]
 pub struct BoxCache<A: Implicit> {
     target: A,
     cache: Option<Rect>
 }
 
+pub struct Transformation<A: Implicit> {
+    pub target: A,
+    pub matrix: Matrix,
+}
+
+
 impl <A: Implicit> BoxCache<A> {
-    fn new(target: A) -> BoxCache<A> {
+    pub fn new(target: A) -> BoxCache<A> {
         let bb = target.bounding_box();
         BoxCache {
             target: target,
             cache: bb
         }
+    }
+}
+
+impl <A: Implicit> Implicit for Transformation<A> {
+    fn sample(&self, pos: Point) -> f32 {
+        self.target.sample(self.matrix.transform_point_inv(&pos))
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        let bb = match self.target.bounding_box() {
+            Some(bb) => bb,
+            None => return None
+        };
+
+        let a = self.matrix.transform_point(&bb.top_left());
+        let b = self.matrix.transform_point(&bb.top_right());
+        let c = self.matrix.transform_point(&bb.bottom_left());
+        let d = self.matrix.transform_point(&bb.bottom_right());
+
+        let mut rect = Rect::null_at(&a);
+        rect.expand_to_include(&b);
+        rect.expand_to_include(&c);
+        rect.expand_to_include(&d);
+
+        Some(rect)
     }
 }
 
@@ -99,6 +134,7 @@ impl Implicit for GenericShape {
             &GenericShape::Boundary(ref b) => b.sample(pos),
             &GenericShape::Not(ref n) => n.sample(pos),
             &GenericShape::BoxCache(ref c) => c.sample(pos),
+            &GenericShape::Transformation(ref t) => t.sample(pos),
         }
     }
 
@@ -111,6 +147,7 @@ impl Implicit for GenericShape {
             &GenericShape::Boundary(ref b) => b.bounding_box(),
             &GenericShape::Not(ref n) => n.bounding_box(),
             &GenericShape::BoxCache(ref c) => c.bounding_box(),
+            &GenericShape::Transformation(ref t) => t.bounding_box(),
         }
     }
 }
@@ -156,40 +193,18 @@ impl Implicit for Polygon {
     }
 
     fn bounding_box(&self) -> Option<Rect> {
-        use std::cmp::*;
-        #[derive(PartialEq, PartialOrd)]
-        struct B(f32);
-        impl Eq for B { }
-        impl Ord for B {
-            fn cmp(&self, other: &B) -> Ordering {
-                self.0.partial_cmp(&other.0).unwrap_or(Ordering::Equal)
-            }
+        let mut min_x = ::std::f32::INFINITY;
+        let mut min_y = ::std::f32::INFINITY;
+        let mut max_x = -::std::f32::INFINITY;
+        let mut max_y = -::std::f32::INFINITY;
+
+        for line in self.lines().iter() {
+            min_x = min_x.min(line.0.x).min(line.1.x);
+            min_y = min_y.min(line.0.y).min(line.1.y);
+            max_x = max_x.max(line.0.x).max(line.1.x);
+            max_y = max_y.max(line.0.y).max(line.1.y);
         }
-        // TODO: optimize
-        let min_x = self.lines()
-                        .iter()
-                        .map(|line| line.0.x.min(line.1.x))
-                        .map(B)
-                        .min()
-                        .unwrap().0;
-        let min_y = self.lines()
-                        .iter()
-                        .map(|line| line.0.y.min(line.1.y))
-                        .map(B)
-                        .min()
-                        .unwrap().0;
-        let max_x = self.lines()
-                        .iter()
-                        .map(|line| line.0.x.max(line.1.x))
-                        .map(B)
-                        .max()
-                        .unwrap().0;
-        let max_y = self.lines()
-                        .iter()
-                        .map(|line| line.0.y.max(line.1.y))
-                        .map(B)
-                        .max()
-                        .unwrap().0;
+
         Some(Rect::from_points(&Point{x: min_x, y: min_y}, &Point{x: max_x, y: max_y}))
     }
 }
