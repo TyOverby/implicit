@@ -1,4 +1,4 @@
-use std::ops::{Neg, Add};
+use std::ops::{Neg, Add, Sub, Mul, Div};
 
 #[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Point {
@@ -22,12 +22,41 @@ pub struct Rect
     pub bottom_right: Point
 }
 
+#[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
+pub struct Ray(pub Point, pub Vector);
+
+#[derive(PartialOrd, PartialEq, Clone, Debug)]
+pub struct Polygon {
+    points: Vec<Point>,
+    lines: Vec<Line>,
+}
+
 impl Neg for Vector {
     type Output = Vector;
     fn neg(self) -> Vector {
         Vector {
             x: -self.x,
             y: -self.y
+        }
+    }
+}
+
+impl Sub<Vector> for Point {
+    type Output = Point;
+    fn sub(self, rhs: Vector) -> Point {
+        Point {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y
+        }
+    }
+}
+
+impl Sub<Point> for Vector {
+    type Output = Point;
+    fn sub(self, rhs: Point) -> Point {
+        Point {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y
         }
     }
 }
@@ -49,6 +78,78 @@ impl Add<Point> for Vector {
             x: self.x + rhs.x,
             y: self.y + rhs.y
         }
+    }
+}
+
+impl Sub<Point> for Point {
+    type Output = Vector;
+    fn sub(self, rhs: Point) -> Vector {
+        Vector {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y
+        }
+    }
+}
+
+impl Add<Vector> for Vector {
+    type Output = Vector;
+    fn add(self, rhs: Vector) -> Vector {
+        Vector {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y
+        }
+    }
+}
+
+impl Mul<f32> for Vector {
+    type Output = Vector;
+    fn mul(self, rhs: f32) -> Vector {
+        Vector {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl Div<f32> for Vector {
+    type Output = Vector;
+    fn div(self, rhs: f32) -> Vector {
+        Vector {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
+
+
+impl Line {
+    pub fn dist_to_point(&self, p: &Point) -> f32 {
+        #[inline(always)]
+        fn sqr(x: f32) -> f32 { x * x }
+        #[inline(always)]
+        fn dist2(v: &Point, w: &Point) -> f32 {
+            sqr(v.x - w.x) + sqr(v.y - w.y)
+        }
+        #[inline(always)]
+        fn dist_to_segment_squared(p: &Point, v: &Point, w: &Point) -> f32 {
+            let l2 = dist2(v, w);
+            if l2 == 0.0 { //  TODO: epsilon
+                return dist2(p, v);
+            }
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            if t < 0.0 {
+                dist2(p, v)
+            } else if t > 1.0 {
+                dist2(p, w)
+            } else {
+                dist2(p, &Point {
+                    x: v.x + t * (w.x - v.x),
+                    y: v.y + t * (w.y - v.y)
+                })
+            }
+        }
+
+        dist_to_segment_squared(p, &self.0, &self.1).sqrt()
     }
 }
 
@@ -80,6 +181,15 @@ impl Rect {
         Rect {
             top_left: *point,
             bottom_right: *point,
+        }
+    }
+
+    pub fn expand(&self, left: f32, top: f32, right: f32, bottom: f32) -> Rect {
+        let top_left_vec = Vector { x: left, y: top };
+        let bottom_right_vec = Vector { x: right, y: bottom };
+        Rect {
+            top_left: self.top_left - top_left_vec,
+            bottom_right: self.bottom_right + bottom_right_vec,
         }
     }
 
@@ -239,5 +349,77 @@ impl Rect {
                 &(self.top_left + half),
                 &half)
         ]
+    }
+}
+
+impl Polygon {
+    pub fn new<I: Iterator<Item=Point>>(i: I) -> Polygon {
+        let points: Vec<_> = i.collect();
+        let lines  = Polygon::compute_lines(&points[..]);
+        Polygon {
+            points: points,
+            lines: lines,
+        }
+    }
+
+    // TODO: make this a lazy iterator.
+    fn compute_lines(from: &[Point]) -> Vec<Line> {
+        let mut out = vec![];
+        for window in from.windows(2) {
+            out.push(Line(window[0], window[1]));
+        }
+        if from.len() > 2 {
+            out.push(Line(*from.first().unwrap(), *from.last().unwrap()));
+        }
+        out
+    }
+
+    pub fn lines(&self) -> &[Line] {
+        &self.lines
+    }
+}
+
+impl Vector {
+    pub fn magnitude(&self) -> f32 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+
+    pub fn normalized(&self) -> Vector {
+        let m = self.magnitude();
+        Vector {
+            x: self.x / m,
+            y: self.y / m,
+        }
+    }
+
+    pub fn cross(&self, other: &Vector) -> f32 {
+        self.x * other.y - self.y * other.x
+    }
+
+    pub fn dot(&self, other: &Vector) -> f32 {
+        self.x * other.x + self.y * other.y
+    }
+}
+
+impl Ray {
+    pub fn intersect_with_line(&self, line: &Line) -> Option<Point> {
+        let ray_origin = self.0;
+        let ray_direction = self.1;
+        let point_1 = line.0;
+        let point_2 = line.1;
+
+        let v1 = ray_origin - point_1;
+        let v2 = point_2 - point_1;
+        let v3 = Vector {x: -ray_direction.y, y: ray_direction.x};
+
+        let t1 = v2.cross(&v1) / v2.dot(&v3);
+        let t2 = v1.dot(&v3) / v2.dot(&v3);
+
+        if t1 >= 0.0 && t2 >= 0.0 && t2 <= 1.0 {
+            let normalized_direction = ray_direction.normalized();
+            Some(ray_origin + normalized_direction * t1)
+        } else {
+            None
+        }
     }
 }

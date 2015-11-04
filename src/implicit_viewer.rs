@@ -51,12 +51,14 @@ impl ImplicitCanvas {
         for (sx, sy) in self.sampling_points(shape) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
-            let color = if sample > 0.0 {
-                rgb(sample / 10.0, 0.0, 0.0)
+
+            let factor = 10.0;
+            let color = if sample < 0.0 {
+                rgb(sample / factor, 0.0, 0.0)
             } else {
-                rgb(0.0, -sample / 10.0, 0.0)
+                rgba(0.0, -sample / factor, 0.0, 0.0)
             };
-            let color = rgb(sample, sample, sample);
+            //let color = rgb(sample, sample, sample);
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(color)
                  .fill();
@@ -70,7 +72,7 @@ impl ImplicitCanvas {
             }
         }
 
-        self.draw_rect(&shape.bounding_box().unwrap(), frame);
+        //self.draw_rect(&shape.bounding_box().unwrap(), frame);
     }
 
     fn draw_rect(&self, rect: &Rect, frame: &mut Frame) {
@@ -117,7 +119,28 @@ fn main() {
 
     let modified = Boundary {
         target: xored,
+        move_by: -10.0
+    };
+
+    let poly = Polygon::new(vec![
+                       Point { x: 50.0, y: 50.0 },
+                       Point { x: 200.0, y: 200.0 },
+                       Point {x: 50.0, y: 200.0 },
+                       ].into_iter());
+
+    let poly_outer = Boundary {
+        target: poly.clone(),
         move_by: 10.0
+    };
+
+    let poly_inner = Boundary {
+        target: poly,
+        move_by: 50.0
+    };
+
+    let poly = Xor{
+        left: poly_outer,
+        right: poly_inner
     };
 
     struct Stripes;
@@ -138,8 +161,10 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-        canvas.render_pix(&modified, &mut frame);
-        canvas.render_pix(&lone_and_stripes, &mut frame);
+//        canvas.render_pix(&modified, &mut frame);
+//        canvas.render_pix(&lone_and_stripes, &mut frame);
+        canvas.render_pix(&poly, &mut frame);
+//        canvas.render_pix(&&poly.lines()[..], &mut frame);
 
         for event in window.events() {
             match event {

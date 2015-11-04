@@ -4,6 +4,7 @@ pub use geom::*;
 pub use quadtree::*;
 
 
+// TODO: this should be unsized
 pub trait Implicit {
     /// Returns the distance from a point to the nearest edge of a surface.
     ///
@@ -24,6 +25,8 @@ pub enum GenericShape {
     Or(Or<Box<GenericShape>, Box<GenericShape>>),
     Xor(Xor<Box<GenericShape>, Box<GenericShape>>),
     Boundary(Boundary<Box<GenericShape>>),
+    Not(Not<Box<GenericShape>>),
+    BoxCache(BoxCache<Box<GenericShape>>),
 }
 
 #[derive(Copy, Clone)]
@@ -56,6 +59,26 @@ pub struct Boundary<A: Implicit> {
     pub move_by: f32
 }
 
+#[derive(Copy, Clone)]
+pub struct Not<A: Implicit> {
+    pub target: A,
+}
+
+pub struct BoxCache<A: Implicit> {
+    target: A,
+    cache: Option<Rect>
+}
+
+impl <A: Implicit> BoxCache<A> {
+    fn new(target: A) -> BoxCache<A> {
+        let bb = target.bounding_box();
+        BoxCache {
+            target: target,
+            cache: bb
+        }
+    }
+}
+
 impl <A: Implicit> Implicit for Box<A> {
     fn sample(&self, pos: Point) -> f32 {
         (**self).sample(pos)
@@ -74,6 +97,8 @@ impl Implicit for GenericShape {
             &GenericShape::Or(ref or) => or.sample(pos),
             &GenericShape::Xor(ref xor) => xor.sample(pos),
             &GenericShape::Boundary(ref b) => b.sample(pos),
+            &GenericShape::Not(ref n) => n.sample(pos),
+            &GenericShape::BoxCache(ref c) => c.sample(pos),
         }
     }
 
@@ -84,7 +109,88 @@ impl Implicit for GenericShape {
             &GenericShape::Or(ref or) => or.bounding_box(),
             &GenericShape::Xor(ref xor) => xor.bounding_box(),
             &GenericShape::Boundary(ref b) => b.bounding_box(),
+            &GenericShape::Not(ref n) => n.bounding_box(),
+            &GenericShape::BoxCache(ref c) => c.bounding_box(),
         }
+    }
+}
+
+impl <I: Implicit> Implicit for BoxCache<I> {
+    fn sample(&self, pos: Point) -> f32 {
+        self.target.sample(pos)
+    }
+    fn bounding_box(&self) -> Option<Rect> {
+        self.cache
+    }
+}
+
+impl <I: Implicit> Implicit for Not<I> {
+    fn sample(&self, pos: Point) -> f32 {
+        -self.target.sample(pos)
+    }
+    fn bounding_box(&self) -> Option<Rect> {
+        None
+    }
+}
+
+impl Implicit for Polygon {
+    fn sample(&self, pos: Point) -> f32 {
+        let mut min = ::std::f32::INFINITY;
+        for line in self.lines() {
+            min = min.min(line.dist_to_point(&pos));
+        }
+
+        let ray = Ray(pos, Vector{x: 1.0, y: 0.0});
+        let mut num_hits = 0;
+        for line in self.lines() {
+            if ray.intersect_with_line(line).is_some() {
+                num_hits += 1;
+            }
+        }
+
+        if num_hits % 2 == 0 {
+            min
+        } else {
+            -min
+        }
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        use std::cmp::*;
+        #[derive(PartialEq, PartialOrd)]
+        struct B(f32);
+        impl Eq for B { }
+        impl Ord for B {
+            fn cmp(&self, other: &B) -> Ordering {
+                self.0.partial_cmp(&other.0).unwrap_or(Ordering::Equal)
+            }
+        }
+        // TODO: optimize
+        let min_x = self.lines()
+                        .iter()
+                        .map(|line| line.0.x.min(line.1.x))
+                        .map(B)
+                        .min()
+                        .unwrap().0;
+        let min_y = self.lines()
+                        .iter()
+                        .map(|line| line.0.y.min(line.1.y))
+                        .map(B)
+                        .min()
+                        .unwrap().0;
+        let max_x = self.lines()
+                        .iter()
+                        .map(|line| line.0.x.max(line.1.x))
+                        .map(B)
+                        .max()
+                        .unwrap().0;
+        let max_y = self.lines()
+                        .iter()
+                        .map(|line| line.0.y.max(line.1.y))
+                        .map(B)
+                        .max()
+                        .unwrap().0;
+        Some(Rect::from_points(&Point{x: min_x, y: min_y}, &Point{x: max_x, y: max_y}))
     }
 }
 
@@ -200,10 +306,10 @@ impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
 
 impl <A: Implicit> Implicit for Boundary<A> {
     fn sample(&self, pos: Point) -> f32 {
-        self.target.sample(pos) + self.move_by
+        self.target.sample(pos) - self.move_by
     }
 
     fn bounding_box(&self) -> Option<Rect> {
-        self.target.bounding_box()
+        self.target.bounding_box().map(|r| r.expand(self.move_by, self.move_by, self.move_by, self.move_by))
     }
 }
