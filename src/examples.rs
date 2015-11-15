@@ -2,17 +2,17 @@ use implicit::*;
 
 pub fn xored_circles() -> Xor<Xor<Circle, Circle>, Circle> {
     let circle_1 = Circle {
-        center: Point { x: 100.0, y: 100.0 },
+        center: Point { x: 50.0, y: 50.0 },
         radius: 50.0
     };
 
     let circle_2 = Circle {
-        center: Point { x:  150.0, y: 100.0 },
+        center: Point { x:  100.0, y: 50.0 },
         radius: 50.0
     };
 
     let circle_3 = Circle {
-        center: Point { x: 125.0, y: 150.0 },
+        center: Point { x: 75.0, y: 100.0 },
         radius: 50.0
     };
 
@@ -25,6 +25,24 @@ pub fn xored_circles() -> Xor<Xor<Circle, Circle>, Circle> {
         left: xored,
         right: circle_3
     }
+}
+
+pub fn rect() -> Transformation<Polygon> {
+    let poly = Polygon::new(vec![
+                       Point { x:  50.0, y:  50.0 },
+                       Point { x:  50.0, y: 200.0 },
+                       Point { x: 200.0, y: 200.0 },
+                       Point { x: 200.0, y:  50.0 },
+                       ].into_iter());
+    let mut transform = Transformation {
+        target: poly,
+        matrix: Matrix::new(),
+    };
+
+    transform.matrix.translate(150.0, 150.0)
+                    .rotate(3.14 / 8.0)
+                    .translate(-150.0, -150.0);
+    transform
 }
 
 pub struct Stripes;

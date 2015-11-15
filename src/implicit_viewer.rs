@@ -87,7 +87,7 @@ impl ImplicitCanvas {
                          .fill();
                 }
             }
-            let (dx, dy, ds) = self.sample_to_draw((sx, sy));
+            let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
                 let dot_size = ds / 5.0;
@@ -105,7 +105,7 @@ impl ImplicitCanvas {
             let sample = shape.sample(Point { x: sx, y: sy } );
 
             let factor = 10.0;
-            let color = if sample < 0.0 {
+            let color = if sample > 0.0 {
                 rgba(sample / factor, 0.0, 0.0, 0.5)
             } else {
                 rgba(0.0, -sample / factor, 0.0, 0.5)
@@ -141,7 +141,8 @@ fn main() {
 
     let xored = examples::xored_circles();
     let mut stripes = examples::stripes();
-    let poly = examples::poly();
+//    let poly = examples::poly();
+    let poly = examples::rect();
 
     let modified = Boundary {
         target: xored,
@@ -155,16 +156,21 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-        canvas.render_pix(&modified, &mut frame);
-        canvas.render_pix(&stripes, &mut frame);
+//        canvas.render_pix(&modified, &mut frame);
+//        canvas.render_pix(&stripes, &mut frame);
         canvas.render_pix(&poly, &mut frame);
 
-        canvas.render_lines(&modified, &mut frame);
-        canvas.render_lines(&stripes, &mut frame);
+//        canvas.render_lines(&modified, &mut frame);
+//        canvas.render_lines(&stripes, &mut frame);
         canvas.render_lines(&poly, &mut frame);
 
         for event in window.events() {
             match event {
+                Event::WindowResized((x, y)) => {
+                    let (x, y) = (x as f32, y as f32);
+                    let m = x.min(y);
+                    canvas.draw_scale = m / 100.0;
+                }
                 Event::KeyReleased(_, Some('j'), _) => {
                     canvas.resolution += 1;
                 }
@@ -175,10 +181,10 @@ fn main() {
                     }
                 }
                 Event::KeyReleased(_, Some('h'), _) => {
-                    canvas.draw_scale *= 0.5;
+                    canvas.draw_scale *= 0.75;
                 }
                 Event::KeyReleased(_, Some('l'), _) => {
-                    canvas.draw_scale *= 2.0;
+                    canvas.draw_scale *= 1.5;
                 }
                 _ => {}
             }

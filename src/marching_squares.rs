@@ -25,31 +25,34 @@ const W: Vector = Vector { x: -0.5, y:  0.0 };
 #[inline(always)]
 fn n(distance: f32, point: Point, how_much: f32) -> Point {
     let mut result = N * distance + point;
-    result.x += how_much / 2.0;
+    result.x += how_much;
     result
 }
 
 #[inline(always)]
 fn s(distance: f32, point: Point, how_much: f32) -> Point {
     let mut result = S * distance + point;
-    result.x += how_much / 2.0;
+    result.x += how_much;
     result
 }
 
 #[inline(always)]
 fn e(distance: f32, point: Point, how_much: f32) -> Point {
     let mut result = E * distance + point;
-    result.y += how_much / 2.0;
+    result.y += how_much;
     result
 }
 
 #[inline(always)]
 fn w(distance: f32, point: Point, how_much: f32) -> Point {
     let mut result = W * distance + point;
-    result.y += how_much / 2.0;
+    result.y += how_much;
     result
 }
 
+fn lerp(fa: f32, fb: f32, dist: f32) -> f32 {
+    -dist / 2.0 + dist * ((-fa) / (fb - fa))
+}
 
 pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
     let sa = A * dist + p;
@@ -74,25 +77,34 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
         // o o
         // . o
         (false, false, false, true)  => {
-            MarchResult::One(Line(w(dist, p, sra), s(dist, p, -src)))
+            let da = lerp(sra, srd, dist);
+            let dc = lerp(src, srd, dist);
+            MarchResult::One(Line(w(dist, p, da), s(dist, p, -dc)))
         },
         // o o
         // o .
         (false, false, true, false)  => {
-            MarchResult::One(Line(s(dist, p, 0.0), e(dist, p, 0.0)))
+            let db = lerp(src, srb, dist);
+            let dd = lerp(srd, src, dist);
+            MarchResult::One(Line(s(dist, p, dd), e(dist, p, -db)))
         },
         // o o
         // . .
         (false, false, true, true)  => {
-            MarchResult::OneDebug(Line(w(dist, p, -sra), e(dist, p, srb)))
+            let da = lerp(sra, srd, dist);
+            let db = lerp(srb, src, dist);
+            MarchResult::One(Line(w(dist, p, da), e(dist, p, db)))
         },
         // o .
         // o o
         (false, true, false, false)  => {
-            MarchResult::One(Line(n(dist, p, 0.0), e(dist, p, 0.0)))
+            let da = lerp(sra, srb, dist);
+            let db = lerp(srb, src, dist);
+            MarchResult::One(Line(n(dist, p, da), e(dist, p, db)))
         },
         // o .
         // . o
+        // TODO: linear interpolation here.
         (false, true, false, true)  => {
             let srm = i.sample(p);
             let m_on = srm <= 0.0;
@@ -117,17 +129,22 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
         // o .
         // o .
         (false, true, true, false)  => {
-            MarchResult::One(Line(n(dist, p, 0.0), s(dist, p, 0.0)))
+            let da = lerp(srb, sra, dist);
+            let dd = lerp(src, srd, dist);
+            MarchResult::One(Line(n(dist, p, -da), s(dist, p, -dd)))
         },
         // o .
         // . .
         (false, true, true, true)  => {
-            MarchResult::One(Line(w(dist, p, 0.0), n(dist, p, 0.0)))
+            let dc = lerp(sra, srb, dist);
+            let dd = lerp(sra, srd, dist);
+            MarchResult::One(Line(w(dist, p, dd), n(dist, p, dc)))
         },
         // . o
         // o o
         (true, false, false, false)  => {
-            MarchResult::One(Line(w(dist, p, 0.0), n(dist, p, 0.0)))
+
+            MarchResult::OneDebug(Line(w(dist, p, 0.0), n(dist, p, 0.0)))
         },
         // . o
         // . o
@@ -160,8 +177,9 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
         // . o
         // . .
         (true, false, true, true)  => {
-            MarchResult::OneDebug(Line(n(dist, p, (dist / 2.0 + sra)), e(dist, p, (dist / 2.0 + src))));
-            MarchResult::None
+            let da = lerp(sra, srb, dist);
+            let dc = lerp(src, srb, dist);
+            MarchResult::One(Line(n(dist, p, da), e(dist, p, -dc)))
         },
 
         // . .
