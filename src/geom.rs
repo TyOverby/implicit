@@ -398,6 +398,14 @@ impl Vector {
         }
     }
 
+    pub fn mul_e(&self, other: &Vector) -> Vector {
+        Vector { x: self.x * other.x, y: self.y * other.y }
+    }
+
+    pub fn scale_e(&self, sx: f32, sy: f32) -> Vector {
+        Vector { x: self.x * sx, y: self.y * sy }
+    }
+
     pub fn cross(&self, other: &Vector) -> f32 {
         self.x * other.y - self.y * other.x
     }

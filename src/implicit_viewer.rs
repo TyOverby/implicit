@@ -55,6 +55,17 @@ impl ImplicitCanvas {
         for (sx, sy) in self.sampling_points(shape) {
             match march(shape, Point {x: sx, y: sy}, self.resolution as f32) {
                 MarchResult::None => {},
+                MarchResult::OneDebug(line) => {
+                    let (dx, dy, ds) = self.sample_to_draw((sx, sy));
+                    frame.square(dx - ds / 2.0, dy - ds / 2.0, ds)
+                         .color(rgb(0.0, 1.0, 0.0))
+                         .fill();
+                    frame.color((0.2, 0.2, 1.0));
+                    let (x1, y1, _) = self.sample_to_draw((line.0.x, line.0.y));
+                    let (x2, y2, _) = self.sample_to_draw((line.1.x, line.1.y));
+                    frame.draw_line(x1, y1, x2, y2, 1.0);
+                    frame.color((0.0, 0.0, 0.0));
+                }
                 MarchResult::One(line) => {
                     let (x1, y1, _) = self.sample_to_draw((line.0.x, line.0.y));
                     let (x2, y2, _) = self.sample_to_draw((line.1.x, line.1.y));

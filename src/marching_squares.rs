@@ -4,6 +4,7 @@ use geom::{Line, Point, Vector};
 pub enum MarchResult {
     None,
     One(Line),
+    OneDebug(Line),
     Two(Line, Line),
     Debug
 }
@@ -21,20 +22,32 @@ const S: Vector = Vector { x:  0.0, y:  0.5 };
 const E: Vector = Vector { x:  0.5, y:  0.0 };
 const W: Vector = Vector { x: -0.5, y:  0.0 };
 
-fn n(distance: f32, point: Point) -> Point {
-    N * distance + point
+#[inline(always)]
+fn n(distance: f32, point: Point, how_much: f32) -> Point {
+    let mut result = N * distance + point;
+    result.x += how_much / 2.0;
+    result
 }
 
-fn s(distance: f32, point: Point) -> Point {
-    S * distance + point
+#[inline(always)]
+fn s(distance: f32, point: Point, how_much: f32) -> Point {
+    let mut result = S * distance + point;
+    result.x += how_much / 2.0;
+    result
 }
 
-fn e(distance: f32, point: Point) -> Point {
-    E * distance + point
+#[inline(always)]
+fn e(distance: f32, point: Point, how_much: f32) -> Point {
+    let mut result = E * distance + point;
+    result.y += how_much / 2.0;
+    result
 }
 
-fn w(distance: f32, point: Point) -> Point {
-    W * distance + point
+#[inline(always)]
+fn w(distance: f32, point: Point, how_much: f32) -> Point {
+    let mut result = W * distance + point;
+    result.y += how_much / 2.0;
+    result
 }
 
 
@@ -61,22 +74,22 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
         // o o
         // . o
         (false, false, false, true)  => {
-            MarchResult::One(Line(w(dist, p), s(dist, p)))
+            MarchResult::One(Line(w(dist, p, sra), s(dist, p, -src)))
         },
         // o o
         // o .
         (false, false, true, false)  => {
-            MarchResult::One(Line(s(dist, p), e(dist, p)))
+            MarchResult::One(Line(s(dist, p, 0.0), e(dist, p, 0.0)))
         },
         // o o
         // . .
         (false, false, true, true)  => {
-            MarchResult::One(Line(w(dist, p), e(dist, p)))
+            MarchResult::OneDebug(Line(w(dist, p, -sra), e(dist, p, srb)))
         },
         // o .
         // o o
         (false, true, false, false)  => {
-            MarchResult::One(Line(n(dist, p), e(dist, p)))
+            MarchResult::One(Line(n(dist, p, 0.0), e(dist, p, 0.0)))
         },
         // o .
         // . o
@@ -89,37 +102,37 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
             // .   o
             if m_on {
                 MarchResult::Two(
-                    Line(w(dist, p), n(dist, p)),
-                    Line(s(dist, p), e(dist, p)))
+                    Line(w(dist, p, 0.0), n(dist, p, 0.0)),
+                    Line(s(dist, p, 0.0), e(dist, p, 0.0)))
             }
             // o   .
             //   o
             // .   o
             else {
                 MarchResult::Two(
-                    Line(w(dist, p), s(dist, p)),
-                    Line(n(dist, p), e(dist, p)))
+                    Line(w(dist, p, 0.0), s(dist, p, 0.0)),
+                    Line(n(dist, p, 0.0), e(dist, p, 0.0)))
             }
         },
         // o .
         // o .
         (false, true, true, false)  => {
-            MarchResult::One(Line(n(dist, p), s(dist, p)))
+            MarchResult::One(Line(n(dist, p, 0.0), s(dist, p, 0.0)))
         },
         // o .
         // . .
         (false, true, true, true)  => {
-            MarchResult::One(Line(w(dist, p), n(dist, p)))
+            MarchResult::One(Line(w(dist, p, 0.0), n(dist, p, 0.0)))
         },
         // . o
         // o o
         (true, false, false, false)  => {
-            MarchResult::One(Line(w(dist, p), n(dist, p)))
+            MarchResult::One(Line(w(dist, p, 0.0), n(dist, p, 0.0)))
         },
         // . o
         // . o
         (true, false, false, true)  => {
-            MarchResult::One(Line(n(dist, p), s(dist, p)))
+            MarchResult::One(Line(n(dist, p, 0.0), s(dist, p, 0.0)))
         },
         // . o
         // o .
@@ -132,39 +145,40 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
             // o   .
             if m_on {
                 MarchResult::Two(
-                    Line(n(dist, p), e(dist, p)),
-                    Line(w(dist, p), s(dist, p)))
+                    Line(n(dist, p, 0.0), e(dist, p, 0.0)),
+                    Line(w(dist, p, 0.0), s(dist, p, 0.0)))
             }
             // .   o
             //   o
             // o   .
             else {
                 MarchResult::Two(
-                    Line(w(dist, p), n(dist, p)),
-                    Line(s(dist, p), e(dist, p)))
+                    Line(w(dist, p, 0.0), n(dist, p, 0.0)),
+                    Line(s(dist, p, 0.0), e(dist, p, 0.0)))
             }
         },
         // . o
         // . .
         (true, false, true, true)  => {
-            MarchResult::One(Line(n(dist, p), e(dist, p)))
+            MarchResult::OneDebug(Line(n(dist, p, (dist / 2.0 + sra)), e(dist, p, (dist / 2.0 + src))));
+            MarchResult::None
         },
 
         // . .
         // o o
         (true, true, false, false)  => {
-            MarchResult::One(Line(w(dist, p), e(dist, p)))
+            MarchResult::One(Line(w(dist, p, 0.0), e(dist, p, 0.0)))
         },
         // . .
         // . o
         (true, true, false, true)  => {
-            MarchResult::One(Line(s(dist, p), e(dist, p)))
+            MarchResult::One(Line(s(dist, p, 0.0), e(dist, p, 0.0)))
         },
 
         // . .
         // o .
         (true, true, true, false)  => {
-            MarchResult::One(Line(w(dist, p), s(dist, p)))
+            MarchResult::One(Line(w(dist, p, 0.0), s(dist, p, 0.0)))
         },
         // . .
         // . .
