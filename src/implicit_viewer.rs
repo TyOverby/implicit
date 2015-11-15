@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate implicit;
 extern crate lux;
 
@@ -49,17 +51,39 @@ impl ImplicitCanvas {
          self.resolution as f32 * self.draw_scale)
     }
 
+    fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+        for (sx, sy) in self.sampling_points(shape) {
+            match march(shape, Point {x: sx, y: sy}, self.resolution as f32) {
+                MarchResult::None => {},
+                MarchResult::One(line) => {
+                    let (x1, y1, _) = self.sample_to_draw((line.0.x, line.0.y));
+                    let (x2, y2, _) = self.sample_to_draw((line.1.x, line.1.y));
+                    frame.draw_line(x1, y1, x2, y2, 1.0);
+                }
+                MarchResult::Two(line1, line2) => {
+                    let (x1, y1, _) = self.sample_to_draw((line1.0.x, line1.0.y));
+                    let (x2, y2, _) = self.sample_to_draw((line1.1.x, line1.1.y));
+                    frame.draw_line(x1, y1, x2, y2, 1.0);
+
+                    let (x1, y1, _) = self.sample_to_draw((line2.0.x, line2.0.y));
+                    let (x2, y2, _) = self.sample_to_draw((line2.1.x, line2.1.y));
+                    frame.draw_line(x1, y1, x2, y2, 1.0);
+                }
+            }
+        }
+    }
+
     fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
         for (sx, sy) in self.sampling_points(shape) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 
-            let factor = 10.0;
+            /*let factor = 10.0;
             let color = if sample < 0.0 {
                 rgb(sample / factor, 0.0, 0.0)
             } else {
                 rgba(0.0, -sample / factor, 0.0, 0.0)
-            };
+            };*/
             let color = rgba(sample, sample, sample, -sample);
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(color)
@@ -105,11 +129,13 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-        /*
         canvas.render_pix(&modified, &mut frame);
-        canvas.render_pix(&lone_and_stripes, &mut frame);
-        */
+        canvas.render_pix(&stripes, &mut frame);
         canvas.render_pix(&poly, &mut frame);
+
+        canvas.render_lines(&modified, &mut frame);
+        canvas.render_lines(&stripes, &mut frame);
+        canvas.render_lines(&poly, &mut frame);
 
         for event in window.events() {
             match event {

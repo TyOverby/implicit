@@ -1,9 +1,13 @@
+#![allow(dead_code)]
+
 extern crate vecmath;
 
 mod geom;
+mod marching_squares;
 mod quadtree;
 pub use geom::*;
 pub use quadtree::*;
+pub use marching_squares::*;
 
 
 // TODO: this should be unsized

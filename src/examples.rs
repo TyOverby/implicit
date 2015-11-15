@@ -1,4 +1,3 @@
-use super::*;
 use implicit::*;
 
 pub fn xored_circles() -> Xor<Xor<Circle, Circle>, Circle> {
