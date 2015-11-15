@@ -143,16 +143,20 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
         // . o
         // o o
         (true, false, false, false)  => {
-
-            MarchResult::OneDebug(Line(w(dist, p, 0.0), n(dist, p, 0.0)))
+            let db = lerp(sra, srb, dist);
+            let dd = lerp(sra, srd, dist);
+            MarchResult::One(Line(w(dist, p, dd), n(dist, p, db)))
         },
         // . o
         // . o
         (true, false, false, true)  => {
-            MarchResult::One(Line(n(dist, p, 0.0), s(dist, p, 0.0)))
+            let da = lerp(srb, sra, dist);
+            let dd = lerp(src, srd, dist);
+            MarchResult::One(Line(n(dist, p, -da), s(dist, p, -dd)))
         },
         // . o
         // o .
+        // TODO: lerp
         (true, false, true, false)  => {
             let srm = i.sample(p);
             let m_on = srm <= 0.0;
@@ -185,18 +189,24 @@ pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
         // . .
         // o o
         (true, true, false, false)  => {
-            MarchResult::One(Line(w(dist, p, 0.0), e(dist, p, 0.0)))
+            let da = lerp(sra, srd, dist);
+            let db = lerp(srb, src, dist);
+            MarchResult::One(Line(w(dist, p, da), e(dist, p, db)))
         },
         // . .
         // . o
         (true, true, false, true)  => {
-            MarchResult::One(Line(s(dist, p, 0.0), e(dist, p, 0.0)))
+            let db = lerp(srb, src, dist);
+            let dd = lerp(srd, src, dist);
+            MarchResult::One(Line(s(dist, p, dd), e(dist, p, db)))
         },
 
         // . .
         // o .
         (true, true, true, false)  => {
-            MarchResult::One(Line(w(dist, p, 0.0), s(dist, p, 0.0)))
+            let da = lerp(sra, srd, dist);
+            let dd = lerp(srd, src, dist);
+            MarchResult::One(Line(w(dist, p, da), s(dist, p, dd)))
         },
         // . .
         // . .

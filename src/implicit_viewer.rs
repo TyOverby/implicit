@@ -141,8 +141,8 @@ fn main() {
 
     let xored = examples::xored_circles();
     let mut stripes = examples::stripes();
-//    let poly = examples::poly();
-    let poly = examples::rect();
+    let poly = examples::poly();
+//    let poly = examples::rect();
 
     let modified = Boundary {
         target: xored,
@@ -158,9 +158,9 @@ fn main() {
         let mut frame = window.cleared_frame(color::WHITE);
 //        canvas.render_pix(&modified, &mut frame);
 //        canvas.render_pix(&stripes, &mut frame);
-        canvas.render_pix(&poly, &mut frame);
+//        canvas.render_pix(&poly, &mut frame);
 
-//        canvas.render_lines(&modified, &mut frame);
+        canvas.render_lines(&modified, &mut frame);
 //        canvas.render_lines(&stripes, &mut frame);
         canvas.render_lines(&poly, &mut frame);
 
