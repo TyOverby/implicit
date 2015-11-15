@@ -23,10 +23,10 @@ impl ImplicitCanvas {
         let bounding_box = shape.bounding_box().unwrap();
         let start = bounding_box.top_left;
         let end = bounding_box.bottom_right;
-        let start_x = (start.x / self.resolution as f32) as u32 * self.resolution;
-        let start_y = (start.y / self.resolution as f32) as u32 * self.resolution;
-        let end_x = (end.x / self.resolution as f32) as u32 * self.resolution;
-        let end_y = (end.y / self.resolution as f32) as u32 * self.resolution;
+        let start_x = (start.x / self.resolution as f32) as u32 * self.resolution - 1;
+        let start_y = (start.y / self.resolution as f32) as u32 * self.resolution - 1;
+        let end_x   = (end.x / self.resolution as f32) as u32 * self.resolution + 1;
+        let end_y   = (end.y / self.resolution as f32) as u32 * self.resolution + 1;
 
 
         let mut x = start_x;
@@ -69,6 +69,21 @@ impl ImplicitCanvas {
                     let (x2, y2, _) = self.sample_to_draw((line2.1.x, line2.1.y));
                     frame.draw_line(x1, y1, x2, y2, 1.0);
                 }
+                MarchResult::Debug => {
+                    let (dx, dy, ds) = self.sample_to_draw((sx, sy));
+                    frame.square(dx - ds / 2.0, dy - ds / 2.0, ds)
+                         .color(rgb(0.0, 1.0, 0.0))
+                         .fill();
+                }
+            }
+            let (dx, dy, ds) = self.sample_to_draw((sx, sy));
+            if ds > 5.0 {
+                let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
+                let dot_size = ds / 5.0;
+                let dot_offset = dot_size / 2.0;
+                frame.square(dpx - dot_offset, dpy - dot_offset, dot_size)
+                     .color(rgb(1.0, 0.0, 0.0))
+                     .fill();
             }
         }
     }
@@ -78,13 +93,13 @@ impl ImplicitCanvas {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 
-            /*let factor = 10.0;
+            let factor = 10.0;
             let color = if sample < 0.0 {
-                rgb(sample / factor, 0.0, 0.0)
+                rgba(sample / factor, 0.0, 0.0, 0.5)
             } else {
-                rgba(0.0, -sample / factor, 0.0, 0.0)
-            };*/
-            let color = rgba(sample, sample, sample, -sample);
+                rgba(0.0, -sample / factor, 0.0, 0.5)
+            };
+            //let color = rgba(sample, sample, sample, -sample);
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(color)
                  .fill();
