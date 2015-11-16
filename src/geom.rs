@@ -129,6 +129,10 @@ impl Div<f32> for Vector {
 
 
 impl Line {
+    pub fn bounding_box(&self) -> Rect {
+        Rect::from_points(&self.0, &self.1)
+    }
+
     pub fn dist_to_point(&self, p: &Point) -> f32 {
         #[inline(always)]
         fn sqr(x: f32) -> f32 { x * x }
@@ -160,6 +164,11 @@ impl Line {
 }
 
 impl Rect {
+    pub fn centered_with_radius(p1: &Point, radius: f32) -> Rect {
+        let v = Vector { x: radius, y: radius };
+        Rect::from_points(&(*p1 - v), &(*p1 + v))
+    }
+
     pub fn from_points(p1: &Point, p2: &Point) -> Rect {
         let mut r = Rect::null_at(&p1);
         r.expand_to_include(&p2);
@@ -496,5 +505,17 @@ impl Matrix {
         prod[1][0] = -s;
         prod[1][1] = c;
         self.apply_matrix(prod)
+    }
+}
+
+impl Point {
+    pub fn distance(&self, other: &Point) -> f32 {
+        self.distance_2(other).sqrt()
+    }
+
+    pub fn distance_2(&self, other: &Point) -> f32 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        dx * dx + dy * dy
     }
 }

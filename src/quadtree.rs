@@ -72,15 +72,22 @@ impl <T> QuadTree<T> {
         item_id
     }
 
+    pub fn first(&self) -> Option<ItemId> {
+        self.elements.iter().next().map(|(id, _)| *id)
+    }
+
     pub fn insert(&mut self, t: T) -> ItemId where T: Spatial {
         let b = t.aabb();
         self.insert_with_box(t, b)
     }
 
-    pub fn query(&self, bounding_box: Rect) -> Vec<&(T, Rect)> {
+    pub fn query(&self, bounding_box: Rect) -> Vec<(&T, &Rect, ItemId)> {
         let mut ids = vec![];
         self.root.query(bounding_box, &mut ids);
-        ids.iter().map(|&(id, _)| self.elements.get(&id).unwrap()).collect()
+        ids.iter().map(|&(id, _)| {
+            let &(ref t, ref rect) = self.elements.get(&id).unwrap();
+            (t, rect, id)
+        }).collect()
     }
 
     pub fn remove(&mut self, item_id: ItemId) -> Option<(T, Rect)> {
@@ -99,6 +106,14 @@ impl <T> QuadTree<T> {
 
     pub fn inspect<F: FnMut(&Rect, usize, bool)>(&self, mut f: F) {
         self.root.inspect(&mut f);
+    }
+
+    pub fn len(&self) -> usize {
+        self.elements.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.elements.is_empty()
     }
 }
 

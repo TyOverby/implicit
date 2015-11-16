@@ -66,7 +66,7 @@ fn draw_tree_query(rects: &[Rect], query: Option<&Rect>, frame: &mut Frame) {
     }
 
     if let Some(query) = query {
-        for &(ref rect, _) in quadtree.query(*query) {
+        for (_, rect, _) in quadtree.query(*query) {
             draw_rectangle(frame, rect, (0.0, 0.0, 0.5));
         }
     }

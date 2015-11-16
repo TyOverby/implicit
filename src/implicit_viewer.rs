@@ -141,12 +141,12 @@ fn main() {
 
     let xored = examples::xored_circles();
     let mut stripes = examples::stripes();
-    let poly = examples::poly();
-//    let poly = examples::rect();
+//    let poly = examples::poly();
+    let poly = examples::rect();
 
     let modified = Boundary {
-        target: xored,
-        move_by: -10.0
+        target: poly.clone(),
+        move_by: -30.0
     };
 
     let mut canvas = ImplicitCanvas {

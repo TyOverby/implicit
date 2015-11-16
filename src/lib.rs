@@ -5,9 +5,11 @@ extern crate vecmath;
 mod geom;
 mod marching_squares;
 mod quadtree;
+mod line_join;
 pub use geom::*;
 pub use quadtree::*;
 pub use marching_squares::*;
+pub use line_join::*;
 
 
 // TODO: this should be unsized
@@ -84,6 +86,7 @@ pub struct BoxCache<A: Implicit> {
     cache: Option<Rect>
 }
 
+#[derive(Copy, Clone)]
 pub struct Transformation<A: Implicit> {
     pub target: A,
     pub matrix: Matrix,
