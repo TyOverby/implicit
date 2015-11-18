@@ -7,27 +7,78 @@ pub enum LineType {
     Unjoined(Vec<Point>)
 }
 
-pub fn join_lines(lines: Vec<Line>, resolution: f32) -> Vec<LineType> {
+pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Line>) {
+    let (mut joined, qt) = join_lines(lines, resolution);
+
+    loop {
+        let mut any_progress = false;
+        let (joined_t, p) = fuse_ends(joined, resolution);
+        joined = joined_t;
+        any_progress |= p;
+
+        let (connected_t, p) = connect_linetypes(joined, resolution);
+        joined = connected_t;
+        any_progress |= p;
+
+        if !any_progress {
+            break;
+        }
+    }
+
+    (joined, qt)
+}
+
+fn connect_linetypes(lines: Vec<LineType>, _resolution: f32) -> (Vec<LineType>, bool) {
+    (lines, false)
+}
+
+fn fuse_ends(lines: Vec<LineType>, resolution: f32) -> (Vec<LineType>, bool) {
+    let mut out = vec![];
+    let mut made_progress = false;
+    for line in lines {
+        match line {
+            a@LineType::Joined(_) => out.push(a),
+            LineType::Unjoined(mut points) => {
+                let first = points.first().cloned().unwrap();
+                let last = points.last().cloned().unwrap();
+                if first.distance_2(&last) < resolution * resolution {
+                    println!("first: {:?}, last: {:?}", first, last);
+                    println!("dist: {}", first.distance_2(&last));
+                    points.pop();
+                    out.push(LineType::Joined(points));
+                    made_progress = true;
+                } else {
+                    out.push(LineType::Unjoined(points));
+                }
+            }
+        }
+    }
+    (out, made_progress)
+}
+
+fn join_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Line>) {
     let mut aabb: Option<Rect> = None;
     for line in &lines {
-        let mut set = false;
         if let Some(aabb) = aabb.as_mut() {
-            aabb.union_with(&line.bounding_box());
-            set = true;
+            *aabb = aabb.union_with(&line.bounding_box());
         }
-        if !set {
+        if aabb.is_none() {
             aabb = Some(line.bounding_box());
         }
     }
+
     let aabb = match aabb {
         Some(aabb) => aabb,
-        None => return vec![]
+        None => return (vec![], QuadTree::new(Rect::null(), 4, 16, 4))
     };
 
     let mut tree = QuadTree::new(aabb, 4, 16, 4);
     for line in lines {
         tree.insert(line);
     }
+    let tree_dup = tree.clone();
+
+    let mut out = vec![];
 
     while !tree.is_empty() {
         let first_id = tree.first().unwrap();
@@ -37,7 +88,8 @@ pub fn join_lines(lines: Vec<Line>, resolution: f32) -> Vec<LineType> {
 
         loop {
             let closest = {
-                let mut near_last = tree.query(Rect::centered_with_radius(&last, resolution));
+                let query = Rect::centered_with_radius(&last, resolution);
+                let mut near_last = tree.query(query);
                 near_last.sort_by(|&(l1, _, _), &(l2, _, _)| {
                     let d1a = l1.0.distance_2(&last);
                     let d1b = l1.1.distance_2(&last);
@@ -49,6 +101,7 @@ pub fn join_lines(lines: Vec<Line>, resolution: f32) -> Vec<LineType> {
                     let l2_min = d2a.min(d2b);
                     l1_min.partial_cmp(&l2_min).unwrap_or(Ordering::Equal)
                 });
+                println!("{} found in query", near_last.len());
 
                 let closest_line_opt = near_last.into_iter().next();
                 closest_line_opt.map(|(a, b, c)| {
@@ -66,13 +119,13 @@ pub fn join_lines(lines: Vec<Line>, resolution: f32) -> Vec<LineType> {
                     points.push(line.0);
                 }
             } else {
+                println!("breaking");
                 break;
             }
         }
 
-        // TODO:
-        // group all the points together in a line.  Check to see if it's closed,
+        out.push(LineType::Unjoined(points));
     }
 
-    unimplemented!();
+    (out, tree_dup)
 }

@@ -13,7 +13,8 @@ use implicit::*;
 #[derive(Eq, PartialEq, Clone, Copy)]
 enum AddMode {
     Draw,
-    Query
+    Query,
+    Delete
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -36,6 +37,9 @@ fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
     frame.text("[q]uery add_mode", 20.0, 40.0)
          .color(if add_mode == AddMode::Query { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
          .draw().unwrap();
+    frame.text("[d]elete mode", 20.0, 60.0)
+         .color(if add_mode == AddMode::Delete { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
+         .draw().unwrap();
     frame.text("[l]ist query", 20.0, 80.0)
          .color(if query_mode == QueryMode::List { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
          .draw().unwrap();
@@ -44,23 +48,7 @@ fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
          .draw().unwrap();
 }
 
-fn draw_tree_query(rects: &[Rect], query: Option<&Rect>, frame: &mut Frame) {
-    let size = Rect::from_point_and_size(
-        &Point {
-            x: 0.0,
-            y: 0.0
-        },
-        &Vector {
-            x: frame.width(),
-            y: frame.height()
-        });
-
-    let mut quadtree = QuadTree::default(size);
-
-    for rect in rects {
-        quadtree.insert(*rect);
-    }
-
+fn draw_tree_query(quadtree: &QuadTree<Rect>, query: Option<&Rect>, frame: &mut Frame) {
     for (_, &(ref rect, _)) in quadtree.iter() {
         draw_rectangle(frame, rect, (0.0, 0.0, 0.0));
     }
@@ -93,8 +81,19 @@ fn draw_list_query(rects: &[Rect], query: Option<&Rect>, frame: &mut Frame) {
 
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
+    let size = Rect::from_point_and_size(
+        &Point {
+            x: 0.0,
+            y: 0.0
+        },
+        &Vector {
+            x: window.width(),
+            y: window.height()
+    });
+
     let mut last_down_position = None;
     let mut rects = vec![];
+    let mut quadtree = QuadTree::new(size, 1, 4, 8);
     let mut add_mode = AddMode::Draw;
     let mut query_mode = QueryMode::List;
     let mut query = None;
@@ -119,11 +118,14 @@ fn main() {
         let mut this_rect = None;
         for event in window.events() {
             match event {
-                Event::KeyReleased(_, Some('d'), _) => {
+                Event::KeyReleased(_, Some('a'), _) => {
                     add_mode = AddMode::Draw;
                 }
                 Event::KeyReleased(_, Some('q'), _) => {
                     add_mode = AddMode::Query;
+                }
+                Event::KeyReleased(_, Some('d'), _) => {
+                    add_mode = AddMode::Delete;
                 }
                 Event::KeyReleased(_, Some('l'), _) => {
                     query_mode = QueryMode::List;
@@ -150,17 +152,25 @@ fn main() {
 
         match (add_mode, this_rect) {
             (AddMode::Draw, Some(r)) => {
+                quadtree.insert(r);
                 rects.push(r);
             }
             (AddMode::Query, Some(r)) => {
                 query = Some(r);
             }
+            (AddMode::Delete, Some(r)) => {
+                rects.retain(|x| !x.does_intersect(&r));
+                let all_inside: Vec<_> = quadtree.query(r).into_iter().map(|(_, _, id)| id.clone()).collect();
+                for inside in all_inside {
+                    quadtree.remove(inside);
+                }
+            }
             _ => {  }
         }
 
         match query_mode {
-            QueryMode::List => draw_list_query(&rects[..], query.as_ref(), &mut frame),
-            QueryMode::Tree => draw_tree_query(&rects[..], query.as_ref(), &mut frame),
+            QueryMode::List => draw_list_query(&rects, query.as_ref(), &mut frame),
+            QueryMode::Tree => draw_tree_query(&quadtree, query.as_ref(), &mut frame),
         }
 
         if let Some(query) = query.as_ref() {

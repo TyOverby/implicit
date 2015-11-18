@@ -52,6 +52,7 @@ impl ImplicitCanvas {
     }
 
     fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+        let mut lines = vec![];
         for (sx, sy) in self.sampling_points(shape) {
             match march(shape, Point {x: sx, y: sy}, self.resolution as f32) {
                 MarchResult::None => {},
@@ -60,25 +61,12 @@ impl ImplicitCanvas {
                     frame.square(dx - ds / 2.0, dy - ds / 2.0, ds)
                          .color(rgb(0.0, 1.0, 0.0))
                          .fill();
-                    frame.color((0.2, 0.2, 1.0));
-                    let (x1, y1, _) = self.sample_to_draw((line.0.x, line.0.y));
-                    let (x2, y2, _) = self.sample_to_draw((line.1.x, line.1.y));
-                    frame.draw_line(x1, y1, x2, y2, 1.0);
-                    frame.color((0.0, 0.0, 0.0));
+                    lines.push(line)
                 }
-                MarchResult::One(line) => {
-                    let (x1, y1, _) = self.sample_to_draw((line.0.x, line.0.y));
-                    let (x2, y2, _) = self.sample_to_draw((line.1.x, line.1.y));
-                    frame.draw_line(x1, y1, x2, y2, 1.0);
-                }
+                MarchResult::One(line) => lines.push(line),
                 MarchResult::Two(line1, line2) => {
-                    let (x1, y1, _) = self.sample_to_draw((line1.0.x, line1.0.y));
-                    let (x2, y2, _) = self.sample_to_draw((line1.1.x, line1.1.y));
-                    frame.draw_line(x1, y1, x2, y2, 1.0);
-
-                    let (x1, y1, _) = self.sample_to_draw((line2.0.x, line2.0.y));
-                    let (x2, y2, _) = self.sample_to_draw((line2.1.x, line2.1.y));
-                    frame.draw_line(x1, y1, x2, y2, 1.0);
+                    lines.push(line1);
+                    lines.push(line2);
                 }
                 MarchResult::Debug => {
                     let (dx, dy, ds) = self.sample_to_draw((sx, sy));
@@ -87,6 +75,45 @@ impl ImplicitCanvas {
                          .fill();
                 }
             }
+        }
+
+        /*
+        for line in &lines {
+            let (ax, ay, _) = self.sample_to_draw((line.0.x, line.0.y));
+            let (bx, by, _) = self.sample_to_draw((line.1.x, line.1.y));
+            frame.draw_line(ax, ay, bx, by, 1.0);
+        }*/
+
+        let res = self.resolution as f32 / 2.0;
+        let (simplified, tree) = connect_lines(lines, res);
+
+        tree.inspect(|rect, _, _| {
+            self.draw_rect(rect, frame);
+        });
+
+        for line_type in simplified.into_iter() {
+            let points = match line_type {
+                LineType::Unjoined(points) => points,
+                LineType::Joined(mut points) => {
+                    if let Some(first) = points.first().cloned() {
+                        points.push(first);
+                    }
+                    println!("points in shape: {}", points.len());
+                    points
+                },
+            };
+
+            let screen_points = points.into_iter().map(|point| {
+                let (a, b, _) = self.sample_to_draw((point.x, point.y));
+                (a, b)
+            });
+
+            frame.draw_lines(screen_points, 1.0);
+        }
+    }
+
+    fn draw_dots<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+        for (sx, sy) in self.sampling_points(shape) {
             let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
@@ -114,16 +141,7 @@ impl ImplicitCanvas {
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(color)
                  .fill();
-            if ds > 5.0 {
-                let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
-                let dot_size = ds / 5.0;
-                let dot_offset = dot_size / 2.0;
-                frame.square(dpx - dot_offset, dpy - dot_offset, dot_size)
-                     .color(rgb(1.0, 0.0, 0.0))
-                     .fill();
-            }
         }
-
         //self.draw_rect(&shape.bounding_box().unwrap(), frame);
     }
 
@@ -141,8 +159,8 @@ fn main() {
 
     let xored = examples::xored_circles();
     let mut stripes = examples::stripes();
-//    let poly = examples::poly();
-    let poly = examples::rect();
+    let poly = examples::poly();
+//    let poly = examples::rect();
 
     let modified = Boundary {
         target: poly.clone(),
@@ -160,9 +178,12 @@ fn main() {
 //        canvas.render_pix(&stripes, &mut frame);
 //        canvas.render_pix(&poly, &mut frame);
 
-        canvas.render_lines(&modified, &mut frame);
+//        canvas.render_lines(&modified, &mut frame);
 //        canvas.render_lines(&stripes, &mut frame);
         canvas.render_lines(&poly, &mut frame);
+
+//        canvas.draw_dots(&modified, &mut frame);
+//        canvas.draw_dots(&poly, &mut frame);
 
         for event in window.events() {
             match event {

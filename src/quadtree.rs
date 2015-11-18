@@ -1,21 +1,22 @@
 use std::collections::HashMap;
+use std::cmp::Ord;
 use super::geom::{Rect, Point, Line};
 
 pub trait Spatial {
     fn aabb(&self) -> Rect;
 }
 
-#[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
 pub struct ItemId(u32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct QuadTreeConfig {
     max_children: usize,
     min_children: usize,
     max_depth: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QuadTree<T> {
     root: QuadNode,
     config: QuadTreeConfig,
@@ -36,6 +37,34 @@ enum QuadNode {
         aabb: Rect,
         elements: Vec<(ItemId, Rect)>,
         depth: usize,
+    }
+}
+
+impl Clone for QuadNode {
+    fn clone(&self) -> QuadNode {
+        match self {
+            &QuadNode::Branch {ref aabb, ref children, ref in_all, ref element_count, ref depth} => {
+                let children = [
+                    children[0].clone(),
+                    children[1].clone(),
+                    children[2].clone(),
+                    children[3].clone()];
+                QuadNode::Branch{
+                    aabb: aabb.clone(),
+                    children: children,
+                    in_all: in_all.clone(),
+                    element_count: element_count.clone(),
+                    depth: depth.clone(),
+                }
+            }
+            &QuadNode::Leaf {ref aabb, ref elements, ref depth} => {
+                QuadNode::Leaf {
+                    aabb: aabb.clone(),
+                    elements: elements.clone(),
+                    depth: depth.clone()
+                }
+            }
+        }
     }
 }
 
@@ -81,11 +110,19 @@ impl <T> QuadTree<T> {
         self.insert_with_box(t, b)
     }
 
-    pub fn query(&self, bounding_box: Rect) -> Vec<(&T, &Rect, ItemId)> {
+    pub fn query(&self, bounding_box: Rect) -> Vec<(&T, &Rect, ItemId)> where T: ::std::fmt::Debug {
         let mut ids = vec![];
         self.root.query(bounding_box, &mut ids);
+        ids.sort_by(|&(id1, _), &(ref id2, _)| id1.cmp(id2));
+        ids.dedup();
         ids.iter().map(|&(id, _)| {
-            let &(ref t, ref rect) = self.elements.get(&id).unwrap();
+            let &(ref t, ref rect) = match self.elements.get(&id) {
+                Some(e) => e,
+                None => {
+                    println!("{:#?}", self);
+                    panic!("looked for {:?}", id);
+                }
+            };
             (t, rect, id)
         }).collect()
     }
@@ -115,9 +152,21 @@ impl <T> QuadTree<T> {
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
     }
+
+    pub fn validate(&self) -> bool where T: ::std::fmt::Debug {
+        self.query(self.root.bounding_box());
+        true
+    }
 }
 
 impl QuadNode {
+    fn bounding_box(&self) -> Rect {
+        match self {
+            &QuadNode::Branch {ref aabb, ..} => aabb.clone(),
+            &QuadNode::Leaf {ref aabb, ..} => aabb.clone(),
+        }
+    }
+
     fn new_leaf(aabb: Rect, depth: usize, config: &QuadTreeConfig) -> QuadNode {
         QuadNode::Leaf {
             aabb: aabb,
@@ -233,6 +282,8 @@ impl QuadNode {
         if let Some((size, aabb, depth)) = compact {
             let mut elements = Vec::with_capacity(size);
             self.query(aabb, &mut elements);
+            elements.sort_by(|&(id1, _), &(ref id2, _)| id1.cmp(id2));
+            elements.dedup();
             *self = QuadNode::Leaf {
                 aabb: aabb,
                 elements: elements,
