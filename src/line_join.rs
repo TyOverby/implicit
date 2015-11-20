@@ -28,8 +28,105 @@ pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadT
     (joined, qt)
 }
 
-fn connect_linetypes(lines: Vec<LineType>, _resolution: f32) -> (Vec<LineType>, bool) {
-    (lines, false)
+pub fn simplify_line(pts: Vec<Point>, epsilon_2: f32) -> Vec<Point> {
+    if pts.len() <= 2 {
+        return pts;
+    }
+    let mut pts = pts.into_iter();
+    let mut out = vec![];
+
+    let mut first = pts.next().unwrap();
+    let mut prev = pts.next().unwrap();
+    out.push(first);
+
+    while let Some(p) = pts.next() {
+        let line = Line(first, p);
+        let dist_to_prev = line.dist_to_point(&prev);
+        if dist_to_prev < epsilon_2 {
+            prev = p;
+        } else {
+            out.push(prev);
+            first = prev;
+            prev = p;
+        }
+    }
+
+    out.push(prev);
+    out
+}
+
+fn connect_linetypes(mut lines: Vec<LineType>, _resolution: f32) -> (Vec<LineType>, bool) {
+    fn overlap(a: Option<&Point>, b: Option<&Point>) -> bool {
+        match (a, b) {
+            (Some(a), Some(b)) => a.distance_2(b) < 0.001,
+            _ => false
+        }
+    }
+
+    let mut made_progress = false;
+    loop {
+        let mut remove_this = None;
+        'do_remove: for i in 0 .. lines.len() {
+            for k in (i + 1) .. lines.len() {
+                let (part_a, part_b) = lines.split_at_mut(i + 1);
+                if let (&mut LineType::Unjoined(ref mut a),
+                        &mut LineType::Unjoined(ref mut b)) = (&mut part_a[i], &mut part_b[k - i - 1]) {
+
+                    // Aaaaaaaaaaa
+                    // Bbbbbb
+                    //  ->
+                    // bbbbbAaaaaaaaaa
+                    if overlap(a.first(), b.first()) {
+                        b.reverse();
+                        b.pop();
+                        b.append(a);
+                        remove_this = Some(i);
+                        break 'do_remove;
+                    }
+
+                    // Aaaaaaaaaaa
+                    // bbbbbbbB
+                    //  ->
+                    // bbbbbbbAaaaaaaaaaaa
+                    if overlap(a.first(), b.last()) {
+                        b.pop();
+                        b.append(a);
+                        remove_this = Some(i);
+                        break 'do_remove;
+                    }
+
+                    // aaaaaaaaaaA
+                    // Bbbbbb
+                    //  ->
+                    //  aaaaaaaaaBbbbbb
+                    if overlap(a.last(), b.first()) {
+                        a.pop();
+                        a.append(b);
+                        remove_this = Some(k);
+                        break 'do_remove;
+                    }
+                    // aaaaaaaaA
+                    // bbbbbbB
+                    //  -> aaaaaaaaAbbbbbbb
+                    if overlap(a.last(), b.last()) {
+                        b.pop();
+                        a.append(b);
+                        remove_this = Some(k);
+                        break 'do_remove
+                    }
+                }
+            }
+        }
+
+        if let Some(p) = remove_this {
+            lines.swap_remove(p);
+            made_progress = true;
+        } else {
+            break;
+        }
+    }
+
+    (lines, made_progress)
 }
 
 fn fuse_ends(lines: Vec<LineType>, resolution: f32) -> (Vec<LineType>, bool) {
@@ -42,8 +139,6 @@ fn fuse_ends(lines: Vec<LineType>, resolution: f32) -> (Vec<LineType>, bool) {
                 let first = points.first().cloned().unwrap();
                 let last = points.last().cloned().unwrap();
                 if first.distance_2(&last) < resolution * resolution {
-                    println!("first: {:?}, last: {:?}", first, last);
-                    println!("dist: {}", first.distance_2(&last));
                     points.pop();
                     out.push(LineType::Joined(points));
                     made_progress = true;
@@ -101,7 +196,6 @@ fn join_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Lin
                     let l2_min = d2a.min(d2b);
                     l1_min.partial_cmp(&l2_min).unwrap_or(Ordering::Equal)
                 });
-                println!("{} found in query", near_last.len());
 
                 let closest_line_opt = near_last.into_iter().next();
                 closest_line_opt.map(|(a, b, c)| {
@@ -119,7 +213,6 @@ fn join_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Lin
                     points.push(line.0);
                 }
             } else {
-                println!("breaking");
                 break;
             }
         }

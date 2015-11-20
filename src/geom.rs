@@ -133,7 +133,7 @@ impl Line {
         Rect::from_points(&self.0, &self.1)
     }
 
-    pub fn dist_to_point(&self, p: &Point) -> f32 {
+    pub fn dist_to_point_2(&self, p: &Point) -> f32 {
         #[inline(always)]
         fn sqr(x: f32) -> f32 { x * x }
         #[inline(always)]
@@ -159,7 +159,11 @@ impl Line {
             }
         }
 
-        dist_to_segment_squared(p, &self.0, &self.1).sqrt()
+        dist_to_segment_squared(p, &self.0, &self.1)
+    }
+
+    pub fn dist_to_point(&self, p: &Point) -> f32 {
+        self.dist_to_point_2(p).sqrt()
     }
 }
 

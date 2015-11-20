@@ -15,28 +15,29 @@ use implicit::*;
 
 struct ImplicitCanvas {
     draw_scale: f32,
-    resolution: u32,
+    resolution: f32,
 }
 
 impl ImplicitCanvas {
-    fn sampling_points(&self, shape: &Implicit) -> vec::IntoIter<(f32, f32)> {
-        let bounding_box = shape.bounding_box().unwrap();
-        let start = bounding_box.top_left;
-        let end = bounding_box.bottom_right;
-        let start_x = (start.x / self.resolution as f32) as u32 * self.resolution - 1;
-        let start_y = (start.y / self.resolution as f32) as u32 * self.resolution - 1;
-        let end_x   = (end.x / self.resolution as f32) as u32 * self.resolution + 1;
-        let end_y   = (end.y / self.resolution as f32) as u32 * self.resolution + 1;
+    fn sampling_points(&self, bb: Rect) -> vec::IntoIter<(f32, f32)> {
+        let start = bb.top_left;
+        let end = bb.bottom_right;
+        let start_x = start.x - self.resolution;
+        let start_y = start.y - self.resolution;
+        let end_x = end.x + self.resolution;
+        let end_y = end.y + self.resolution;
 
+        let segments_x = (end_x - start_x) / self.resolution;
+        let segments_y = (end_y - start_y) / self.resolution;
+        let num_points = segments_x * segments_y;
 
         let mut x = start_x;
         let mut y = start_y;
-        let mut out = vec![];
-        let res_scale = self.resolution as f32 * 0.5;
+        let mut out = Vec::with_capacity(num_points.ceil() as usize);
 
         while y < end_y {
             while x < end_x {
-                out.push((x as f32 + res_scale, y as f32 + res_scale));
+                out.push((x, y));
                 x += self.resolution;
             }
             x = start_x;
@@ -53,7 +54,7 @@ impl ImplicitCanvas {
 
     fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
         let mut lines = vec![];
-        for (sx, sy) in self.sampling_points(shape) {
+        for (sx, sy) in self.sampling_points(shape.bounding_box().unwrap()) {
             match march(shape, Point {x: sx, y: sy}, self.resolution as f32) {
                 MarchResult::None => {},
                 MarchResult::OneDebug(line) => {
@@ -87,9 +88,11 @@ impl ImplicitCanvas {
         let res = self.resolution as f32 / 2.0;
         let (simplified, tree) = connect_lines(lines, res);
 
+        /*
         tree.inspect(|rect, _, _| {
             self.draw_rect(rect, frame);
         });
+        */
 
         for line_type in simplified.into_iter() {
             let points = match line_type {
@@ -98,7 +101,9 @@ impl ImplicitCanvas {
                     if let Some(first) = points.first().cloned() {
                         points.push(first);
                     }
-                    println!("points in shape: {}", points.len());
+                    println!("before opt: {}", points.len());
+                    points = simplify_line(points, 0.0001);
+                    println!("after op: {}\n-", points.len());
                     points
                 },
             };
@@ -113,7 +118,7 @@ impl ImplicitCanvas {
     }
 
     fn draw_dots<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        for (sx, sy) in self.sampling_points(shape) {
+        for (sx, sy) in self.sampling_points(shape.bounding_box().unwrap()) {
             let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
@@ -127,7 +132,7 @@ impl ImplicitCanvas {
     }
 
     fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        for (sx, sy) in self.sampling_points(shape) {
+        for (sx, sy) in self.sampling_points(shape.bounding_box().unwrap()) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 
@@ -169,7 +174,7 @@ fn main() {
 
     let mut canvas = ImplicitCanvas {
         draw_scale: 1.0,
-        resolution: 4,
+        resolution: 4.0,
     };
 
     while window.is_open() {
@@ -193,12 +198,12 @@ fn main() {
                     canvas.draw_scale = m / 100.0;
                 }
                 Event::KeyReleased(_, Some('j'), _) => {
-                    canvas.resolution += 1;
+                    canvas.resolution += 1f32;
                 }
                 Event::KeyReleased(_, Some('k'), _) => {
-                    canvas.resolution -= 1;
-                    if canvas.resolution == 0 {
-                        canvas.resolution = 1;
+                    canvas.resolution -= 1f32;
+                    if canvas.resolution <= 0.0 {
+                        canvas.resolution = 1f32;
                     }
                 }
                 Event::KeyReleased(_, Some('h'), _) => {
