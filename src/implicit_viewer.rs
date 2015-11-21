@@ -19,33 +19,6 @@ struct ImplicitCanvas {
 }
 
 impl ImplicitCanvas {
-    fn sampling_points(&self, bb: Rect) -> vec::IntoIter<(f32, f32)> {
-        let start = bb.top_left;
-        let end = bb.bottom_right;
-        let start_x = start.x - self.resolution;
-        let start_y = start.y - self.resolution;
-        let end_x = end.x + self.resolution;
-        let end_y = end.y + self.resolution;
-
-        let segments_x = (end_x - start_x) / self.resolution;
-        let segments_y = (end_y - start_y) / self.resolution;
-        let num_points = segments_x * segments_y;
-
-        let mut x = start_x;
-        let mut y = start_y;
-        let mut out = Vec::with_capacity(num_points.ceil() as usize);
-
-        while y < end_y {
-            while x < end_x {
-                out.push((x, y));
-                x += self.resolution;
-            }
-            x = start_x;
-            y += self.resolution;
-        }
-        out.into_iter()
-    }
-
     fn sample_to_draw(&self, (x, y): (f32, f32)) -> (f32, f32, f32) {
         (x * self.draw_scale,
          y * self.draw_scale,
@@ -53,72 +26,37 @@ impl ImplicitCanvas {
     }
 
     fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        let mut lines = vec![];
-        for (sx, sy) in self.sampling_points(shape.bounding_box().unwrap()) {
-            match march(shape, Point {x: sx, y: sy}, self.resolution as f32) {
-                MarchResult::None => {},
-                MarchResult::OneDebug(line) => {
-                    let (dx, dy, ds) = self.sample_to_draw((sx, sy));
-                    frame.square(dx - ds / 2.0, dy - ds / 2.0, ds)
-                         .color(rgb(0.0, 1.0, 0.0))
-                         .fill();
-                    lines.push(line)
-                }
-                MarchResult::One(line) => lines.push(line),
-                MarchResult::Two(line1, line2) => {
-                    lines.push(line1);
-                    lines.push(line2);
-                }
-                MarchResult::Debug => {
-                    let (dx, dy, ds) = self.sample_to_draw((sx, sy));
-                    frame.square(dx - ds / 2.0, dy - ds / 2.0, ds)
-                         .color(rgb(0.0, 1.0, 0.0))
-                         .fill();
+        let mut scene = Scene::new(vec![GenericShape::Ref(shape)]);
+        scene.resolution = self.resolution;
+        let rendered_objects = scene.render(false);
+        for RenderedObject(paths) in rendered_objects {
+            println!("{} paths", paths.len());
+            for path in paths {
+                match path {
+                    LineType::Joined(mut r) => {
+                        if let Some(first) = r.first().cloned() {
+                            r.push(first);
+                        }
+                        let pts = r.into_iter().map(|Point{x, y}| {
+                            let (dx, dy, _) = self.sample_to_draw((x, y));
+                            (dx, dy)
+                        });
+                        frame.draw_lines(pts, 1.0);
+                    }
+                    LineType::Unjoined(r) => {
+                        let pts = r.into_iter().map(|Point{x, y}| {
+                            let (dx, dy, _) = self.sample_to_draw((x, y));
+                            (dx, dy)
+                        });
+                        frame.draw_lines(pts, 1.0);
+                    }
                 }
             }
-        }
-
-        /*
-        for line in &lines {
-            let (ax, ay, _) = self.sample_to_draw((line.0.x, line.0.y));
-            let (bx, by, _) = self.sample_to_draw((line.1.x, line.1.y));
-            frame.draw_line(ax, ay, bx, by, 1.0);
-        }*/
-
-        let res = self.resolution as f32 / 2.0;
-        let (simplified, tree) = connect_lines(lines, res);
-
-        /*
-        tree.inspect(|rect, _, _| {
-            self.draw_rect(rect, frame);
-        });
-        */
-
-        for line_type in simplified.into_iter() {
-            let points = match line_type {
-                LineType::Unjoined(points) => points,
-                LineType::Joined(mut points) => {
-                    if let Some(first) = points.first().cloned() {
-                        points.push(first);
-                    }
-                    println!("before opt: {}", points.len());
-                    points = simplify_line(points, 0.0001);
-                    println!("after op: {}\n-", points.len());
-                    points
-                },
-            };
-
-            let screen_points = points.into_iter().map(|point| {
-                let (a, b, _) = self.sample_to_draw((point.x, point.y));
-                (a, b)
-            });
-
-            frame.draw_lines(screen_points, 1.0);
         }
     }
 
     fn draw_dots<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        for (sx, sy) in self.sampling_points(shape.bounding_box().unwrap()) {
+        for (sx, sy) in sampling_points(shape.bounding_box().unwrap(), self.resolution) {
             let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
@@ -132,7 +70,7 @@ impl ImplicitCanvas {
     }
 
     fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        for (sx, sy) in self.sampling_points(shape.bounding_box().unwrap()) {
+        for (sx, sy) in sampling_points(shape.bounding_box().unwrap(), self.resolution) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 
@@ -188,7 +126,7 @@ fn main() {
         canvas.render_lines(&poly, &mut frame);
 
 //        canvas.draw_dots(&modified, &mut frame);
-//        canvas.draw_dots(&poly, &mut frame);
+        canvas.draw_dots(&poly, &mut frame);
 
         for event in window.events() {
             match event {

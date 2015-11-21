@@ -6,10 +6,13 @@ mod geom;
 mod marching_squares;
 mod quadtree;
 mod line_join;
+mod scene;
+
 pub use geom::*;
 pub use quadtree::*;
 pub use marching_squares::*;
 pub use line_join::*;
+pub use scene::*;
 
 
 // TODO: this should be unsized
@@ -27,16 +30,17 @@ pub trait Implicit {
     fn bounding_box(&self) -> Option<Rect>;
 }
 
-pub enum GenericShape {
+pub enum GenericShape<'a> {
     Circle(Circle),
     Polygon(Polygon),
-    And(And<Box<GenericShape>, Box<GenericShape>>),
-    Or(Or<Box<GenericShape>, Box<GenericShape>>),
-    Xor(Xor<Box<GenericShape>, Box<GenericShape>>),
-    Boundary(Boundary<Box<GenericShape>>),
-    Not(Not<Box<GenericShape>>),
-    BoxCache(BoxCache<Box<GenericShape>>),
-    Transformation(Transformation<Box<GenericShape>>),
+    And(And<Box<GenericShape<'a>>, Box<GenericShape<'a>>>),
+    Or(Or<Box<GenericShape<'a>>, Box<GenericShape<'a>>>),
+    Xor(Xor<Box<GenericShape<'a>>, Box<GenericShape<'a>>>),
+    Boundary(Boundary<Box<GenericShape<'a>>>),
+    Not(Not<Box<GenericShape<'a>>>),
+    BoxCache(BoxCache<Box<GenericShape<'a>>>),
+    Transformation(Transformation<Box<GenericShape<'a>>>),
+    Ref(&'a Implicit)
 }
 
 #[derive(Copy, Clone)]
@@ -138,7 +142,7 @@ impl <A: Implicit> Implicit for Box<A> {
     }
 }
 
-impl Implicit for GenericShape {
+impl <'a> Implicit for GenericShape<'a> {
     fn sample(&self, pos: Point) -> f32 {
         match self {
             &GenericShape::Circle(ref circle) => circle.sample(pos),
@@ -150,6 +154,7 @@ impl Implicit for GenericShape {
             &GenericShape::Not(ref n) => n.sample(pos),
             &GenericShape::BoxCache(ref c) => c.sample(pos),
             &GenericShape::Transformation(ref t) => t.sample(pos),
+            &GenericShape::Ref(ref t) => t.sample(pos),
         }
     }
 
@@ -164,6 +169,7 @@ impl Implicit for GenericShape {
             &GenericShape::Not(ref n) => n.bounding_box(),
             &GenericShape::BoxCache(ref c) => c.bounding_box(),
             &GenericShape::Transformation(ref t) => t.bounding_box(),
+            &GenericShape::Ref(ref t) => t.bounding_box(),
         }
     }
 }
