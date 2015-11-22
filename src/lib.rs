@@ -1,13 +1,16 @@
 #![allow(dead_code)]
 
 extern crate vecmath;
+extern crate itertools;
 
 mod geom;
+mod dash;
 mod marching_squares;
 mod quadtree;
 mod line_join;
 mod scene;
 
+pub use dash::*;
 pub use geom::*;
 pub use quadtree::*;
 pub use marching_squares::*;

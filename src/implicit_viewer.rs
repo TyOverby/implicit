@@ -31,17 +31,24 @@ impl ImplicitCanvas {
         let rendered_objects = scene.render(false);
         for RenderedObject(paths) in rendered_objects {
             println!("{} paths", paths.len());
+            let colors = vec![lux::color::RED, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::WHITE];
+            let mut colors = colors.iter().cloned().cycle();
+
             for path in paths {
+                frame.color(colors.next().unwrap());
                 match path {
                     LineType::Joined(mut r) => {
                         if let Some(first) = r.first().cloned() {
                             r.push(first);
                         }
-                        let pts = r.into_iter().map(|Point{x, y}| {
-                            let (dx, dy, _) = self.sample_to_draw((x, y));
-                            (dx, dy)
-                        });
-                        frame.draw_lines(pts, 1.0);
+
+                        for DashSegment(r) in dashify(r.into_iter(), vec![10.0, 10.0, 20.0, 10.0].iter().cloned()).into_iter() {
+                            let pts = r.into_iter().map(|Point{x, y}| {
+                                let (dx, dy, _) = self.sample_to_draw((x, y));
+                                (dx, dy)
+                            });
+                            frame.draw_lines(pts, 2.0);
+                        }
                     }
                     LineType::Unjoined(r) => {
                         let pts = r.into_iter().map(|Point{x, y}| {
@@ -100,14 +107,14 @@ impl ImplicitCanvas {
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
 
-    let xored = examples::xored_circles();
-    let mut stripes = examples::stripes();
-    let poly = examples::poly();
+    let _xored = examples::xored_circles();
+    let mut _stripes = examples::stripes();
+    let _poly = examples::poly();
 //    let poly = examples::rect();
 
-    let modified = Boundary {
-        target: poly.clone(),
-        move_by: -30.0
+    let _modified = Boundary {
+        target: _xored.clone(),
+        move_by: -7.0
     };
 
     let mut canvas = ImplicitCanvas {
@@ -117,16 +124,17 @@ fn main() {
 
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
-//        canvas.render_pix(&modified, &mut frame);
+        canvas.render_pix(&_modified, &mut frame);
 //        canvas.render_pix(&stripes, &mut frame);
 //        canvas.render_pix(&poly, &mut frame);
 
 //        canvas.render_lines(&modified, &mut frame);
 //        canvas.render_lines(&stripes, &mut frame);
-        canvas.render_lines(&poly, &mut frame);
+        canvas.render_lines(&_modified, &mut frame);
+//        canvas.render_lines(&_poly, &mut frame);
 
-//        canvas.draw_dots(&modified, &mut frame);
-        canvas.draw_dots(&poly, &mut frame);
+        canvas.draw_dots(&_modified, &mut frame);
+//        canvas.draw_dots(&_poly, &mut frame);
 
         for event in window.events() {
             match event {
@@ -154,7 +162,7 @@ fn main() {
             }
         }
 
-        stripes.right.center.x += 1.0
+        _stripes.right.center.x += 1.0
     }
 
 }
