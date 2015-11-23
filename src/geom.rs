@@ -513,6 +513,10 @@ impl Matrix {
 }
 
 impl Point {
+    pub fn close_to(&self, other: &Point, epsilon: f32) -> bool {
+        self.distance_2(other) < epsilon * epsilon
+    }
+
     pub fn distance(&self, other: &Point) -> f32 {
         self.distance_2(other).sqrt()
     }

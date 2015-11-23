@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 extern crate vecmath;
+extern crate rand;
 extern crate itertools;
 
 mod geom;
@@ -42,6 +43,7 @@ pub enum GenericShape<'a> {
     Boundary(Boundary<Box<GenericShape<'a>>>),
     Not(Not<Box<GenericShape<'a>>>),
     BoxCache(BoxCache<Box<GenericShape<'a>>>),
+    Boxed(Box<Implicit>),
     Transformation(Transformation<Box<GenericShape<'a>>>),
     Ref(&'a Implicit)
 }
@@ -98,6 +100,16 @@ pub struct Transformation<A: Implicit> {
     pub target: A,
     pub matrix: Matrix,
 }
+
+impl <A: Implicit> Transformation<A> {
+    pub fn new(a: A) -> Transformation<A> {
+        Transformation {
+             target: a,
+             matrix: Matrix::new()
+        }
+    }
+}
+
 
 
 impl <A: Implicit> BoxCache<A> {
@@ -157,6 +169,7 @@ impl <'a> Implicit for GenericShape<'a> {
             &GenericShape::Not(ref n) => n.sample(pos),
             &GenericShape::BoxCache(ref c) => c.sample(pos),
             &GenericShape::Transformation(ref t) => t.sample(pos),
+            &GenericShape::Boxed(ref t) => t.sample(pos),
             &GenericShape::Ref(ref t) => t.sample(pos),
         }
     }
@@ -172,6 +185,7 @@ impl <'a> Implicit for GenericShape<'a> {
             &GenericShape::Not(ref n) => n.bounding_box(),
             &GenericShape::BoxCache(ref c) => c.bounding_box(),
             &GenericShape::Transformation(ref t) => t.bounding_box(),
+            &GenericShape::Boxed(ref t) => t.bounding_box(),
             &GenericShape::Ref(ref t) => t.bounding_box(),
         }
     }
@@ -197,20 +211,38 @@ impl <I: Implicit> Implicit for Not<I> {
 
 impl Implicit for Polygon {
     fn sample(&self, pos: Point) -> f32 {
+        const EPSILON: f32 = 0.0001;
+        const ITERS: i32 = 3;
+
+        fn is_inside(pos: Point, lines: &[Line]) -> bool {
+            let ray = Ray(pos, Vector{x: rand::random(), y: rand::random()});
+            // keep a list of these so we can tag duplicates
+            let mut hit_points = vec![];
+            for line in lines {
+                if let Some(point) = ray.intersect_with_line(line) {
+                    if !hit_points.iter().any(|p: &Point| p.close_to(&point, EPSILON)) {
+                        hit_points.push(point);
+                    }
+                }
+            }
+            hit_points.len() % 2 == 0
+        }
+
         let mut min = ::std::f32::INFINITY;
         for line in self.lines() {
             min = min.min(line.dist_to_point(&pos));
         }
 
-        let ray = Ray(pos, Vector{x: 1.0, y: 0.0});
-        let mut num_hits = 0;
-        for line in self.lines() {
-            if ray.intersect_with_line(line).is_some() {
-                num_hits += 1;
+        let mut inside_cnt = 0;
+        for _ in 0 .. ITERS {
+            if is_inside(pos, self.lines()) {
+                inside_cnt += 1;
             }
         }
 
-        if num_hits % 2 == 0 {
+        let inside = inside_cnt > (ITERS / 2);
+
+        if inside {
             min
         } else {
             -min
@@ -362,6 +394,7 @@ impl Rectangle {
                      self.rect.bottom_left()];
         self.poly = Polygon::new(v.into_iter());
     }
+
     pub fn new(rect: Rect) -> Rectangle {
         let mut r = Rectangle {
             rect: rect,
@@ -375,5 +408,15 @@ impl Rectangle {
         let r = f(&mut self.rect);
         self.recompute_poly();
         r
+    }
+}
+
+impl Implicit for Rectangle {
+    fn sample(&self, pos: Point) -> f32 {
+        self.poly.sample(pos)
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        self.poly.bounding_box()
     }
 }

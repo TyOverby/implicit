@@ -96,3 +96,26 @@ pub fn poly() -> Transformation<Xor<Boundary<BoxCache<Polygon>>, Boundary<BoxCac
                     .scale(1.25, 0.75);
     transform
 }
+
+pub fn front_collar() -> GenericShape<'static> {
+    let neck_circ = 14.5;
+    let front_len = (3.0 / 4.0) * neck_circ;
+    let main_height = 1.0;
+    let tri_offset = 0.5;
+
+    let main_front_rect = Rectangle::new(Rect::from_points(
+            &Point {x: 0.0, y: 0.0},
+            &Point {x: front_len, y: main_height}));
+
+    let left_triangle = Polygon::new(vec![
+            Point { x: -tri_offset, y: main_height / 2.0 },
+            Point { x: 0.0, y: 0.0 },
+            Point { x: 0.0, y: main_height }].into_iter());
+
+    let front_collar = Or {
+        left: main_front_rect,
+        right: left_triangle.clone()
+    };
+
+    GenericShape::Boxed(Box::new(front_collar))
+}

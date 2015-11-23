@@ -2,6 +2,9 @@ use std::cmp::{PartialOrd, Ordering};
 
 use super::*;
 
+const EPSILON: f32 = 0.001;
+
+#[derive(Debug)]
 pub enum LineType {
     Joined(Vec<Point>),
     Unjoined(Vec<Point>)
@@ -12,11 +15,11 @@ pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadT
 
     loop {
         let mut any_progress = false;
-        let (joined_t, p) = fuse_ends(joined, resolution);
+        let (joined_t, p) = fuse_ends(joined);
         joined = joined_t;
         any_progress |= p;
 
-        let (connected_t, p) = connect_linetypes(joined, resolution);
+        let (connected_t, p) = connect_linetypes(joined);
         joined = connected_t;
         any_progress |= p;
 
@@ -25,10 +28,16 @@ pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadT
         }
     }
 
+    joined.retain(|lt| {
+        match lt {
+            &LineType::Joined(ref r) | &LineType::Unjoined(ref r) => r.len() > 1
+        }
+    });
+
     (joined, qt)
 }
 
-pub fn simplify_line(pts: Vec<Point>, epsilon_2: f32) -> Vec<Point> {
+pub fn simplify_line(pts: Vec<Point>) -> Vec<Point> {
     if pts.len() <= 2 {
         return pts;
     }
@@ -42,7 +51,7 @@ pub fn simplify_line(pts: Vec<Point>, epsilon_2: f32) -> Vec<Point> {
     while let Some(p) = pts.next() {
         let line = Line(first, p);
         let dist_to_prev = line.dist_to_point(&prev);
-        if dist_to_prev < epsilon_2 {
+        if dist_to_prev < EPSILON {
             prev = p;
         } else {
             out.push(prev);
@@ -55,10 +64,10 @@ pub fn simplify_line(pts: Vec<Point>, epsilon_2: f32) -> Vec<Point> {
     out
 }
 
-fn connect_linetypes(mut lines: Vec<LineType>, _resolution: f32) -> (Vec<LineType>, bool) {
+fn connect_linetypes(mut lines: Vec<LineType>) -> (Vec<LineType>, bool) {
     fn overlap(a: Option<&Point>, b: Option<&Point>) -> bool {
         match (a, b) {
-            (Some(a), Some(b)) => a.distance_2(b) < 0.001,
+            (Some(a), Some(b)) => a.close_to(b, EPSILON),
             _ => false
         }
     }
@@ -110,6 +119,7 @@ fn connect_linetypes(mut lines: Vec<LineType>, _resolution: f32) -> (Vec<LineTyp
                     //  -> aaaaaaaaAbbbbbbb
                     if overlap(a.last(), b.last()) {
                         b.pop();
+                        b.reverse();
                         a.append(b);
                         remove_this = Some(k);
                         break 'do_remove
@@ -129,21 +139,43 @@ fn connect_linetypes(mut lines: Vec<LineType>, _resolution: f32) -> (Vec<LineTyp
     (lines, made_progress)
 }
 
-fn fuse_ends(lines: Vec<LineType>, resolution: f32) -> (Vec<LineType>, bool) {
+fn fuse_ends(lines: Vec<LineType>) -> (Vec<LineType>, bool) {
+    fn remove_dup(points: &mut Vec<Point>) {
+        let first = points.first().cloned();
+        let last = points.last().cloned();
+        if let (Some(first), Some(last)) = (first, last) {
+            if first.distance_2(&last) < EPSILON {
+                points.pop();
+            }
+        }
+    }
+
     let mut out = vec![];
     let mut made_progress = false;
     for line in lines {
         match line {
-            a@LineType::Joined(_) => out.push(a),
-            LineType::Unjoined(mut points) => {
-                let first = points.first().cloned().unwrap();
-                let last = points.last().cloned().unwrap();
-                if first.distance_2(&last) < resolution * resolution {
-                    points.pop();
-                    out.push(LineType::Joined(points));
+            LineType::Joined(mut points) => {
+                let prev_len = points.len();
+                remove_dup(&mut points);
+                let post_len = points.len();
+                if post_len < prev_len {
                     made_progress = true;
-                } else {
-                    out.push(LineType::Unjoined(points));
+                }
+                if post_len != 0 {
+                    out.push(LineType::Joined(points));
+                }
+            },
+            LineType::Unjoined(mut points) => {
+                let prev_len = points.len();
+                remove_dup(&mut points);
+                let post_len = points.len();
+                if post_len != 0 {
+                    if post_len < prev_len {
+                        made_progress = true;
+                        out.push(LineType::Joined(points));
+                    } else {
+                        out.push(LineType::Unjoined(points));
+                    }
                 }
             }
         }
@@ -183,7 +215,7 @@ fn join_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Lin
 
         loop {
             let closest = {
-                let query = Rect::centered_with_radius(&last, resolution);
+                let query = Rect::centered_with_radius(&last, resolution / 2.0);
                 let mut near_last = tree.query(query);
                 near_last.sort_by(|&(l1, _, _), &(l2, _, _)| {
                     let d1a = l1.0.distance_2(&last);

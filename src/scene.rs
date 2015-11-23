@@ -42,15 +42,14 @@ impl <'a> Scene<'a> {
             }
 
             let (mut connected_lines, _tree) = connect_lines(lines, self.resolution);
-
             if simplify {
                 let mut simplified = vec![];
                 for path in connected_lines {
                     match path {
                         LineType::Joined(v) =>
-                            simplified.push(LineType::Joined(simplify_line(v, self.epsilon))),
+                            simplified.push(LineType::Joined(simplify_line(v))),
                         LineType::Unjoined(v) =>
-                            simplified.push(LineType::Unjoined(simplify_line(v, self.epsilon))),
+                            simplified.push(LineType::Unjoined(simplify_line(v))),
                     }
                 }
                 connected_lines = simplified;
@@ -68,7 +67,7 @@ pub fn sampling_points(bb: Rect, resolution: f32) -> vec::IntoIter<(f32, f32)> {
     let start_x = start.x - resolution * 2.0;
     let start_y = start.y - resolution * 2.0;
     let end_x = end.x + resolution * 2.0;
-    let end_y = end.y + resolution;
+    let end_y = end.y + resolution * 2.0;
 
     let segments_x = (end_x - start_x) / resolution;
     let segments_y = (end_y - start_y) / resolution;
