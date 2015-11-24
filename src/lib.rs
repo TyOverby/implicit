@@ -81,6 +81,11 @@ pub struct OrThese<A: Implicit> {
     pub targets: Vec<A>
 }
 
+#[derive(Clone)]
+pub struct AndThese<A: Implicit> {
+    pub targets: Vec<A>
+}
+
 #[derive(Copy, Clone)]
 pub struct Xor<A: Implicit, B: Implicit> {
     pub left: A,
@@ -149,6 +154,35 @@ impl <A: Implicit> Implicit for OrThese<A> {
         for p in &self.targets {
             if let Some(p_bb) = p.bounding_box() {
                 bb = bb.union_with(&p_bb);
+            }
+        }
+
+        if bb.is_null() {
+            None
+        } else {
+            Some(bb)
+        }
+    }
+}
+
+impl <A: Implicit> Implicit for AndThese<A> {
+    fn sample(&self, pos: Point) -> f32 {
+        let mut maximum = -std::f32::INFINITY;
+        for p in &self.targets {
+            maximum = maximum.max(p.sample(pos));
+        }
+        maximum
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        let mut bb = Rect::null();
+        for p in &self.targets {
+            if let Some(p_bb) = p.bounding_box() {
+                if bb.is_null() {
+                    bb = p_bb;
+                } else {
+                    bb = bb.intersect_with(&p_bb);
+                }
             }
         }
 
@@ -352,13 +386,7 @@ impl Implicit for Circle {
 
 impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
     fn sample(&self, pos: Point) -> f32 {
-        let left_sample = self.left.sample(pos);
-        let right_sample = self.right.sample(pos);
-        if left_sample > right_sample {
-            left_sample
-        } else {
-            right_sample
-        }
+        self.left.sample(pos).max(self.right.sample(pos))
     }
 
     fn bounding_box(&self) -> Option<Rect> {

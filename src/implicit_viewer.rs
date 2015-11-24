@@ -28,7 +28,7 @@ impl ImplicitCanvas {
         scene.resolution = 2.0 * self.resolution;
         let rendered_objects = scene.render(false);
         for RenderedObject(paths) in rendered_objects {
-            let colors = vec![lux::color::WHITE, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
+            let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
             let mut colors = colors.iter().cloned().cycle();
 
             let total = paths.len();
@@ -157,9 +157,9 @@ fn main() {
     while window.is_open() {
         let mut frame = window.cleared_frame(color::WHITE);
 
-        canvas.render_pix(&collar, &mut frame);
+//        canvas.render_pix(&collar, &mut frame);
         canvas.render_lines(&collar, &mut frame);
-        canvas.draw_dots(&collar, &mut frame);
+//        canvas.draw_dots(&collar, &mut frame);
 
 
 //        canvas.render_pix(&_modified, &mut frame);

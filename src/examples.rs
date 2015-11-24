@@ -103,6 +103,11 @@ pub fn front_collar() -> GenericShape<'static> {
     let main_height = 1.0;
     let tri_offset = 0.5;
 
+    // holes
+    let hole_radius = 0.125;
+    let hole_spacing = 0.25 + hole_radius * 2.0;
+    let hole_offset = 0.5;
+
     let main_front_rect = Rectangle::new(Rect::from_points(
             &Point {x: 0.0, y: 0.0},
             &Point {x: front_len, y: main_height}));
@@ -112,11 +117,31 @@ pub fn front_collar() -> GenericShape<'static> {
             Point { x: 0.0, y: 0.0 },
             Point { x: 0.0, y: main_height }].into_iter());
 
+    let right_triangle = Polygon::new(vec![
+            Point { x: front_len + tri_offset, y: main_height / 2.0 },
+            Point { x: front_len, y: 0.0 },
+            Point { x: front_len, y: main_height }].into_iter());
+
     let front_collar = OrThese::combine(0.1, vec![
-//        main_front_rect
         Box::new(main_front_rect) as Box<Implicit>,
-        Box::new(left_triangle.clone()) as Box<Implicit>
+        Box::new(left_triangle.clone()) as Box<Implicit>,
+        Box::new(right_triangle.clone()) as Box<Implicit>,
     ]);
+
+    let mut holes = vec![];
+    for i in 0 .. 4 {
+        holes.push(
+            Not {
+                target: Circle {
+                    center: Point { x: hole_offset + hole_spacing * i as f32, y: main_height / 2.0 },
+                    radius: hole_radius
+                }
+
+            }.boxed());
+    }
+    let mut targets = holes;
+    targets.push(front_collar.boxed());
+    let front_collar = AndThese { targets: targets };
 
     GenericShape::Boxed(Box::new(front_collar))
 }
