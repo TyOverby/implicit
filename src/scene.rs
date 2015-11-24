@@ -1,18 +1,18 @@
 use super::*;
 use std::vec;
 
-pub struct Scene<'a> {
-    pub objects: Vec<GenericShape<'a>>,
+pub struct Scene<A> {
+    pub objects: Vec<A>,
     pub resolution: f32,
     pub epsilon: f32,
 }
 
 pub struct RenderedObject(pub Vec<LineType>);
 
-impl <'a> Scene<'a> {
-    pub fn new(objects: Vec<GenericShape<'a>>) -> Scene {
+impl <A: Implicit> Scene<A> {
+    pub fn new(objects: Vec<A>) -> Scene<A> {
         Scene {
-            objects: objects,
+           objects: objects,
             resolution: 1.0,
             epsilon: 0.0001
         }

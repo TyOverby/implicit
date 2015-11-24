@@ -265,18 +265,25 @@ impl Rect {
         r
     }
 
+    pub fn is_null(&self) -> bool {
+        self.top_left.x.is_nan() ||
+        self.top_left.y.is_nan() ||
+        self.bottom_right.x.is_nan() ||
+        self.bottom_right.y.is_nan()
+    }
+
     pub fn expand_to_include(&mut self, point: &Point) {
-        if point.x < self.top_left.x {
+        if point.x < self.top_left.x || self.top_left.x.is_nan() {
             self.top_left.x = point.x;
         }
-        if point.y < self.top_left.y {
+        if point.y < self.top_left.y || self.top_left.y.is_nan() {
             self.top_left.y = point.y;
         }
 
-        if point.x > self.bottom_right.x {
+        if point.x > self.bottom_right.x || self.bottom_right.x.is_nan() {
             self.bottom_right.x = point.x;
         }
-        if point.y > self.bottom_right.y {
+        if point.y > self.bottom_right.y || self.bottom_right.y.is_nan() {
             self.bottom_right.y = point.y;
         }
     }

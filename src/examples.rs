@@ -112,10 +112,11 @@ pub fn front_collar() -> GenericShape<'static> {
             Point { x: 0.0, y: 0.0 },
             Point { x: 0.0, y: main_height }].into_iter());
 
-    let front_collar = Or {
-        left: main_front_rect,
-        right: left_triangle.clone()
-    };
+    let front_collar = OrThese::combine(0.1, vec![
+//        main_front_rect
+        Box::new(main_front_rect) as Box<Implicit>,
+        Box::new(left_triangle.clone()) as Box<Implicit>
+    ]);
 
     GenericShape::Boxed(Box::new(front_collar))
 }

@@ -32,6 +32,10 @@ pub trait Implicit {
     ///
     /// If the shape is infinite, return None.
     fn bounding_box(&self) -> Option<Rect>;
+
+    fn boxed(self) -> Box<Implicit> where Self: Sized + 'static {
+        Box::new(self)
+    }
 }
 
 pub enum GenericShape<'a> {
@@ -72,6 +76,11 @@ pub struct Or<A: Implicit, B: Implicit> {
     pub right: B,
 }
 
+#[derive(Clone)]
+pub struct OrThese<A: Implicit> {
+    pub targets: Vec<A>
+}
+
 #[derive(Copy, Clone)]
 pub struct Xor<A: Implicit, B: Implicit> {
     pub left: A,
@@ -110,7 +119,46 @@ impl <A: Implicit> Transformation<A> {
     }
 }
 
+impl <A: Implicit> OrThese<A> {
+    pub fn combine(res: f32, implicits: Vec<A>) -> OrThese<Polygon> {
+        let merged = OrThese { targets: implicits };
+        let mut scene = Scene::new(vec![merged]);
+        scene.resolution = res;
+        let paths = scene.render(false);
 
+        let mut polygons = vec![];
+        for RenderedObject(paths) in paths {
+            polygons.extend(paths.into_iter().map(|p| p.points().into_iter()).map(Polygon::new))
+        }
+
+        OrThese { targets: polygons }
+    }
+}
+
+impl <A: Implicit> Implicit for OrThese<A> {
+    fn sample(&self, pos: Point) -> f32 {
+        let mut minimum = std::f32::INFINITY;
+        for p in &self.targets {
+            minimum = minimum.min(p.sample(pos));
+        }
+        minimum
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        let mut bb = Rect::null();
+        for p in &self.targets {
+            if let Some(p_bb) = p.bounding_box() {
+                bb = bb.union_with(&p_bb);
+            }
+        }
+
+        if bb.is_null() {
+            None
+        } else {
+            Some(bb)
+        }
+    }
+}
 
 impl <A: Implicit> BoxCache<A> {
     pub fn new(target: A) -> BoxCache<A> {
@@ -147,7 +195,17 @@ impl <A: Implicit> Implicit for Transformation<A> {
     }
 }
 
-impl <A: Implicit> Implicit for Box<A> {
+impl <'a> Implicit for &'a Implicit {
+    fn sample(&self, pos: Point) -> f32 {
+        (**self).sample(pos)
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        (**self).bounding_box()
+    }
+}
+
+impl <A: Implicit + ?Sized> Implicit for Box<A> {
     fn sample(&self, pos: Point) -> f32 {
         (**self).sample(pos)
     }

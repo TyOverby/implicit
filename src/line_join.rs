@@ -10,6 +10,14 @@ pub enum LineType {
     Unjoined(Vec<Point>)
 }
 
+impl LineType {
+    pub fn points(self) -> Vec<Point> {
+        match self {
+            LineType::Joined(p) | LineType::Unjoined(p) => p
+        }
+    }
+}
+
 pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Line>) {
     let (mut joined, qt) = join_lines(lines, resolution);
 

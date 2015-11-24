@@ -147,7 +147,7 @@ fn main() {
 
     let mut collar = Transformation::new(collar);
     collar.matrix.translate(100.0, 100.0);
-    collar.matrix.scale(150.0, 150.0);
+    collar.matrix.scale(50.0, 50.0);
 
     let mut canvas = ImplicitCanvas {
         draw_scale: 1.0,
