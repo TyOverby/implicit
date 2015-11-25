@@ -10,6 +10,8 @@ path = "../lux"
 rand = "0.3"
 vecmath = "0.1.1"
 itertools = "*"
+crossbeam = "*"
+flame = "0.1.2"
 
 [[bin]]
 name = "implicit-viewer"

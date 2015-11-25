@@ -3,6 +3,8 @@
 extern crate vecmath;
 extern crate rand;
 extern crate itertools;
+extern crate crossbeam;
+extern crate flame;
 
 mod geom;
 mod dash;
@@ -10,6 +12,9 @@ mod marching_squares;
 mod quadtree;
 mod line_join;
 mod scene;
+
+use std::rc::Rc;
+use std::sync::Arc;
 
 pub use dash::*;
 pub use geom::*;
@@ -20,7 +25,7 @@ pub use scene::*;
 
 
 // TODO: this should be unsized
-pub trait Implicit {
+pub trait Implicit: Sync + Send {
     /// Returns the distance from a point to the nearest edge of a surface.
     ///
     /// If the point is outside of the surface, return a positive number.
@@ -240,6 +245,16 @@ impl <'a> Implicit for &'a Implicit {
 }
 
 impl <A: Implicit + ?Sized> Implicit for Box<A> {
+    fn sample(&self, pos: Point) -> f32 {
+        (**self).sample(pos)
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        (**self).bounding_box()
+    }
+}
+
+impl <A: Implicit + ?Sized + Sync + Send> Implicit for Arc<A> {
     fn sample(&self, pos: Point) -> f32 {
         (**self).sample(pos)
     }

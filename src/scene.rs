@@ -1,5 +1,7 @@
 use super::*;
 use std::vec;
+use crossbeam;
+use flame;
 
 pub struct Scene<A> {
     pub objects: Vec<A>,
@@ -18,6 +20,41 @@ impl <A: Implicit> Scene<A> {
         }
     }
 
+    fn gather_lines<S: Implicit>(&self, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
+        use std::thread;
+        let chunks = sample_points.chunks(sample_points.len() / 8 + 1);
+        let chunks: Vec<Vec<_>> = chunks.map(|a| a.to_vec()).collect();
+        let lines = crossbeam::scope(|scope| {
+            let mut joiners = vec![];
+
+            for chunk in chunks {
+                joiners.push(scope.spawn(move || {
+                    let mut local_lines = vec![];
+                    for (sx, sy) in chunk {
+                        match march(shape, Point {x: sx, y: sy}, self.resolution as f32) {
+                            MarchResult::None => {},
+                            MarchResult::One(line) => local_lines.push(line),
+                            MarchResult::Two(line1, line2) => {
+                                local_lines.push(line1);
+                                local_lines.push(line2);
+                            }
+                            MarchResult::OneDebug(_) | MarchResult::Debug => { }
+                        }
+                    }
+                    local_lines
+                }));
+            }
+
+            let mut lines = vec![];
+            for joiner in joiners {
+                lines.append(&mut joiner.join());
+            }
+            lines
+        });
+
+        lines
+    }
+
     pub fn render(&self, simplify: bool) -> Vec<RenderedObject> {
         let mut out = Vec::with_capacity(self.objects.len());
         for object in &self.objects {
@@ -27,19 +64,9 @@ impl <A: Implicit> Scene<A> {
             };
 
             let sample_points = sampling_points(bb, self.resolution);
-
-            let mut lines = vec![];
-            for (sx, sy) in sample_points {
-                match march(object, Point {x: sx, y: sy}, self.resolution as f32) {
-                    MarchResult::None => {},
-                    MarchResult::One(line) => lines.push(line),
-                    MarchResult::Two(line1, line2) => {
-                        lines.push(line1);
-                        lines.push(line2);
-                    }
-                    MarchResult::OneDebug(_) | MarchResult::Debug => { }
-                }
-            }
+            flame::start("gather lines");
+            let lines = self.gather_lines(sample_points, object);
+            println!("{}", flame::end("gather lines") as f64 * 1e-9);
 
             let (mut connected_lines, _tree) = connect_lines(lines, self.resolution);
             if simplify {
@@ -61,7 +88,7 @@ impl <A: Implicit> Scene<A> {
     }
 }
 
-pub fn sampling_points(bb: Rect, resolution: f32) -> vec::IntoIter<(f32, f32)> {
+pub fn sampling_points(bb: Rect, resolution: f32) -> Vec<(f32, f32)> {
     let start = bb.top_left;
     let end = bb.bottom_right;
     let start_x = start.x - resolution * 2.0;
@@ -85,5 +112,5 @@ pub fn sampling_points(bb: Rect, resolution: f32) -> vec::IntoIter<(f32, f32)> {
         x = start_x;
         y += resolution;
     }
-    out.into_iter()
+    out
 }
