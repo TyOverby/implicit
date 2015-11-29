@@ -28,7 +28,7 @@ impl ImplicitCanvas {
         scene.resolution = 2.0 * self.resolution;
         let rendered_objects = scene.render(false);
         for RenderedObject(paths) in rendered_objects {
-            //let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
+//          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
             let colors = vec![lux::color::BLACK];
             let mut colors = colors.iter().cloned().cycle();
 
@@ -79,13 +79,12 @@ impl ImplicitCanvas {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 
-            let factor = 10.0;
+            let factor = 1.0;
             let color = if sample > 0.0 {
                 rgba(sample / factor, 0.0, 0.0, 1.0)
             } else {
                 rgba(0.0, -sample / factor, 0.0, 1.0)
             };
-            //let color = rgba(sample, sample, sample, -sample);
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
                  .color(color)
                  .fill();
@@ -153,9 +152,9 @@ fn main() {
     while window.is_open() {
         if dirty {
             let mut frame = window.cleared_frame(color::WHITE);
-//          canvas.render_pix(&collar, &mut frame);
+            canvas.render_pix(&collar, &mut frame);
             canvas.render_lines(&collar, &mut frame);
-            canvas.draw_dots(&collar, &mut frame);
+//          canvas.draw_dots(&collar, &mut frame);
         }
 
 
