@@ -28,7 +28,8 @@ impl ImplicitCanvas {
         scene.resolution = 2.0 * self.resolution;
         let rendered_objects = scene.render(false);
         for RenderedObject(paths) in rendered_objects {
-            let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
+            //let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
+            let colors = vec![lux::color::BLACK];
             let mut colors = colors.iter().cloned().cycle();
 
             let _total = paths.len();
@@ -100,50 +101,42 @@ impl ImplicitCanvas {
         });
     }
 
-    fn process_events(&mut self, window: &mut Window) {
+    fn process_events(&mut self, window: &mut Window) -> bool {
+        let mut dirty = false;
         for event in window.events() {
             match event {
                 Event::WindowResized((x, y)) => {
                     let (x, y) = (x as f32, y as f32);
                     let m = x.min(y);
                     self.draw_scale = m / 100.0;
+                    dirty = true;
                 }
                 Event::KeyReleased(_, Some('j'), _) => {
-                    self.resolution += 1f32;
+                    self.resolution *= 1.5f32;
+                    dirty = true;
                 }
                 Event::KeyReleased(_, Some('k'), _) => {
-                    self.resolution -= 1f32;
-                    if self.resolution <= 0.0 {
-                        self.resolution = 1f32;
-                    }
+                    self.resolution *= 0.75f32;
+                    dirty = true;
                 }
                 Event::KeyReleased(_, Some('h'), _) => {
                     self.draw_scale *= 0.75;
+                    dirty = true;
                 }
                 Event::KeyReleased(_, Some('l'), _) => {
                     self.draw_scale *= 1.5;
+                    dirty = true;
                 }
                 _ => {}
             }
         }
+        dirty
 
     }
 }
 
 fn main() {
     let mut window = Window::new_with_defaults().unwrap();
-
-//    let _xored = examples::xored_circles();
-//    let mut _stripes = examples::stripes();
-//    let _poly = examples::poly();
-//    let poly = examples::rect();
-
-//    let _modified = Boundary {
-//        target: _xored.clone(),
-//        move_by: -7.0
-//    };
-
-//    let collar = examples::front_collar();
     let paper = examples::rice_wall();
 
     let mut collar = Transformation::new(paper);
@@ -155,26 +148,17 @@ fn main() {
         resolution: 4.0,
     };
 
+    let mut dirty = true;
+
     while window.is_open() {
-        let mut frame = window.cleared_frame(color::WHITE);
+        if dirty {
+            let mut frame = window.cleared_frame(color::WHITE);
+//          canvas.render_pix(&collar, &mut frame);
+            canvas.render_lines(&collar, &mut frame);
+            canvas.draw_dots(&collar, &mut frame);
+        }
 
-//        canvas.render_pix(&collar, &mut frame);
-        canvas.render_lines(&collar, &mut frame);
-//        canvas.draw_dots(&collar, &mut frame);
 
-
-//        canvas.render_pix(&_modified, &mut frame);
-//        canvas.render_pix(&stripes, &mut frame);
-//        canvas.render_pix(&poly, &mut frame);
-
-//        canvas.render_lines(&modified, &mut frame);
-//        canvas.render_lines(&stripes, &mut frame);
-//        canvas.render_lines(&_modified, &mut frame);
-//        canvas.render_lines(&_poly, &mut frame);
-
-//        canvas.draw_dots(&_modified, &mut frame);
-//        canvas.draw_dots(&_poly, &mut frame);
-
-        canvas.process_events(&mut window);
+        dirty = canvas.process_events(&mut window);
     }
 }

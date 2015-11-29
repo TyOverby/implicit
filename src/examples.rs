@@ -188,5 +188,5 @@ pub fn rice_wall() -> GenericShape<'static> {
                             .or(wire_4.outline(wire_size))
                             .or(center.outline(wire_size));
 
-    GenericShape::Boxed(Box::new(finished.grow(0.05)))
+    GenericShape::Boxed(Box::new(finished.grow(0.00)))
 }

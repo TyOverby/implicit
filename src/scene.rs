@@ -64,7 +64,7 @@ impl <A: Implicit> Scene<A> {
             let sample_points = sampling_points(bb, self.resolution);
             flame::start("gather lines");
             let lines = self.gather_lines(sample_points, object);
-            println!("{}", flame::end("gather lines") as f64 * 1e-9);
+            flame::end("gather lines");
 
             let (mut connected_lines, _tree) = connect_lines(lines, self.resolution);
             if simplify {
