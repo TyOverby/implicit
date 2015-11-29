@@ -31,7 +31,7 @@ impl ImplicitCanvas {
             let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
             let mut colors = colors.iter().cloned().cycle();
 
-            let total = paths.len();
+            let _total = paths.len();
             let mut _joined = 0;
             for path in paths {
                 frame.color(colors.next().unwrap());
@@ -143,9 +143,10 @@ fn main() {
 //        move_by: -7.0
 //    };
 
-    let collar = examples::front_collar();
+//    let collar = examples::front_collar();
+    let paper = examples::rice_wall();
 
-    let mut collar = Transformation::new(collar);
+    let mut collar = Transformation::new(paper);
     collar.matrix.translate(100.0, 100.0);
     collar.matrix.scale(50.0, 50.0);
 

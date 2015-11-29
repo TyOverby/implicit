@@ -13,7 +13,6 @@ mod quadtree;
 mod line_join;
 mod scene;
 
-use std::rc::Rc;
 use std::sync::Arc;
 
 pub use dash::*;
@@ -40,6 +39,70 @@ pub trait Implicit: Sync + Send {
 
     fn boxed(self) -> Box<Implicit> where Self: Sized + 'static {
         Box::new(self)
+    }
+
+    fn and<B: Implicit>(self, other: B) -> And<Self, B> where Self: Sized {
+        And {
+            left: self,
+            right: other
+        }
+    }
+
+    fn and_not<B: Implicit>(self, other: B) -> And<Self, Not<B>> where Self: Sized {
+        And {
+            left: self,
+            right: other.not(),
+        }
+    }
+
+    fn or<B: Implicit>(self, other: B) -> Or<Self, B> where Self: Sized {
+        Or {
+            left: self,
+            right: other
+        }
+    }
+
+    fn xor<B: Implicit>(self, other: B) -> Xor<Self, B> where Self: Sized {
+        Xor {
+            left: self,
+            right: other
+        }
+    }
+
+    fn shrink(self, by: f32) -> Boundary<Self> where Self: Sized {
+        let by = by.max(0.0);
+        Boundary {
+            target: self,
+            move_by: -by
+        }
+    }
+
+    fn grow(self, by: f32) -> Boundary<Self> where Self: Sized {
+        let by = by.max(0.0);
+        Boundary {
+            target: self,
+            move_by: by
+        }
+    }
+
+    fn cache_bounding_box(self) -> BoxCache<Self> where Self: Sized {
+        BoxCache::new(self)
+    }
+
+    fn transform(self) -> Transformation<Self> where Self: Sized {
+        Transformation::new(self)
+    }
+
+    fn not(self) -> Not<Self> where Self: Sized {
+        Not { target: self}
+    }
+
+    fn outline(self, distance: f32) -> And<Self, Not<Boundary<Self>>> where Self: Sized + Clone {
+        self.clone().and(self.shrink(distance).not())
+    }
+
+    fn borrow(&self) -> &Self where Self: Sized {
+        self
     }
 }
 

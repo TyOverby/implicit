@@ -1,5 +1,4 @@
 use super::*;
-use std::vec;
 use crossbeam;
 use flame;
 
@@ -21,7 +20,6 @@ impl <A: Implicit> Scene<A> {
     }
 
     fn gather_lines<S: Implicit>(&self, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
-        use std::thread;
         let chunks = sample_points.chunks(sample_points.len() / 8 + 1);
         let chunks: Vec<Vec<_>> = chunks.map(|a| a.to_vec()).collect();
         let lines = crossbeam::scope(|scope| {
