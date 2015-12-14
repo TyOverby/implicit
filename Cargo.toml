@@ -14,9 +14,5 @@ crossbeam = "*"
 flame = "0.1.2"
 
 [[bin]]
-name = "implicit-viewer"
-path = "./src/implicit_viewer.rs"
-
-[[bin]]
 name = "quadtree-viewer"
 path = "./src/quadtree_viewer.rs"

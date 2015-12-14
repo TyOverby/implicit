@@ -93,6 +93,24 @@ pub trait Implicit: Sync + Send {
         Transformation::new(self)
     }
 
+    fn scale(self, sx: f32, sy: f32) -> Transformation<Self> where Self: Sized {
+        let mut r = Transformation::new(self);
+        r.matrix.scale(sx, sy);
+        r
+    }
+
+    fn translate(self, x: f32, y: f32) -> Transformation<Self> where Self: Sized {
+        let mut r = Transformation::new(self);
+        r.matrix.translate(x, y);
+        r
+    }
+
+    fn rotate(self, rads: f32) -> Transformation<Self> where Self: Sized {
+        let mut r = Transformation::new(self);
+        r.matrix.rotate(rads);
+        r
+    }
+
     fn not(self) -> Not<Self> where Self: Sized {
         Not { target: self}
     }

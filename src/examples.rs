@@ -131,13 +131,10 @@ pub fn front_collar() -> GenericShape<'static> {
     let mut holes = vec![];
     for i in 0 .. 4 {
         holes.push(
-            Not {
-                target: Circle {
+                Circle {
                     center: Point { x: hole_offset + hole_spacing * i as f32, y: main_height / 2.0 },
                     radius: hole_radius
-                }
-
-            }.boxed());
+                }.not().boxed());
     }
     let mut targets = holes;
     targets.push(front_collar.boxed());

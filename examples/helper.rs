@@ -3,8 +3,6 @@
 extern crate implicit;
 extern crate lux;
 
-mod examples;
-
 use lux::prelude::*;
 use lux::color;
 use lux::interactive::Event;
@@ -134,13 +132,15 @@ impl ImplicitCanvas {
     }
 }
 
-fn main() {
-    let mut window = Window::new_with_defaults().unwrap();
-    let paper = examples::rice_wall();
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub enum Display {
+    Lines,
+    Pixels,
+    Dots,
+}
 
-    let mut collar = Transformation::new(paper);
-    collar.matrix.translate(100.0, 100.0);
-    collar.matrix.scale(50.0, 50.0);
+pub fn display(all: Vec<(&Implicit, Display)>) {
+    let mut window = Window::new_with_defaults().unwrap();
 
     let mut canvas = ImplicitCanvas {
         draw_scale: 1.0,
@@ -152,11 +152,19 @@ fn main() {
     while window.is_open() {
         if dirty {
             let mut frame = window.cleared_frame(color::WHITE);
-            canvas.render_pix(&collar, &mut frame);
-            canvas.render_lines(&collar, &mut frame);
-//          canvas.draw_dots(&collar, &mut frame);
-        }
 
+            for &(t, kind) in &all {
+                if kind == Display::Lines {
+                    canvas.render_lines(&t, &mut frame);
+                }
+                if kind == Display::Pixels {
+                    canvas.render_pix(&t, &mut frame);
+                }
+                if kind == Display::Dots {
+                    canvas.draw_dots(&t, &mut frame);
+                }
+            }
+        }
 
         dirty = canvas.process_events(&mut window);
     }
