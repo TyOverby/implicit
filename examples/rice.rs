@@ -49,6 +49,7 @@ fn main() {
 
     let f = GenericShape::Boxed(Box::new(finished.grow(0.00)));
     let f = f.scale(100.0, 100.0);
-
-    helper::display(f, vec![helper::Display::Lines]);
+    
+    helper::display(vec![
+        (&f, helper::Display::Lines)]);
 }
