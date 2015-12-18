@@ -49,7 +49,8 @@ fn main() {
 
     let f = GenericShape::Boxed(Box::new(finished.grow(0.00)));
     let f = f.scale(100.0, 100.0);
-    
-    helper::display(vec![
-        (&f, helper::Display::Lines)]);
+
+    //helper::display(vec![(&scene, helper::Display::Lines)]);
+    let scene = Scene::new(vec![f]);
+    scene.export_svg(true, 200.0, 370.0, "px");
 }

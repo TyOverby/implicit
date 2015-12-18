@@ -12,6 +12,7 @@ mod marching_squares;
 mod quadtree;
 mod line_join;
 mod scene;
+mod svg;
 
 use std::sync::Arc;
 
