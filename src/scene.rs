@@ -61,7 +61,7 @@ impl <A: Implicit> Scene<A> {
             for linetype in lines {
                 match linetype {
                     LineType::Joined(v) | LineType::Unjoined(v) => {
-                        print!(r#"<path fill="none" stroke="black" d=""#);
+                        print!(r#"<path stroke-width="0.01px" fill="none" stroke="black" d=""#);
                         let mut vi = v.into_iter();
                         let first = vi.next();
                         if let Some(first) = first {
