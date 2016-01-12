@@ -4,6 +4,7 @@ extern crate implicit;
 mod helper;
 
 use implicit::*;
+use implicit::geom::*;
 
 const NECK_CIRC: f32 = 14.5;
 const FRONT_LEN: f32 = (3.0 / 4.0) * NECK_CIRC;

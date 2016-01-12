@@ -1,4 +1,4 @@
-use ::Point;
+use super::Point;
 use itertools::PutBack;
 
 pub struct DashSegment(pub Vec<Point>);

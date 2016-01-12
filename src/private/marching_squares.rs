@@ -1,5 +1,5 @@
 use Implicit;
-use geom::{Line, Point, Vector};
+use super::geom::{Line, Point, Vector};
 
 pub enum MarchResult {
     None,

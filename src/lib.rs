@@ -6,23 +6,15 @@ extern crate itertools;
 extern crate crossbeam;
 extern crate flame;
 
-mod geom;
-mod dash;
-mod marching_squares;
-mod quadtree;
-mod line_join;
-mod scene;
-mod svg;
+mod private;
 
+pub use private::render::{render, sampling_points};
+pub use private::geom;
+pub use private::line_join::LineType;
+pub use private::quadtree::QuadTree;
+
+use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};
 use std::sync::Arc;
-
-pub use dash::*;
-pub use geom::*;
-pub use quadtree::*;
-pub use marching_squares::*;
-pub use line_join::*;
-pub use scene::*;
-
 
 // TODO: this should be unsized
 pub trait Implicit: Sync + Send {
@@ -212,18 +204,8 @@ impl <A: Implicit> Transformation<A> {
 }
 
 impl <A: Implicit> OrThese<A> {
-    pub fn combine(res: f32, implicits: Vec<A>) -> OrThese<Polygon> {
-        let merged = OrThese { targets: implicits };
-        let mut scene = Scene::new(vec![merged]);
-        scene.resolution = res;
-        let paths = scene.render(false);
-
-        let mut polygons = vec![];
-        for RenderedObject(paths) in paths {
-            polygons.extend(paths.into_iter().map(|p| p.points().into_iter()).map(Polygon::new))
-        }
-
-        OrThese { targets: polygons }
+    pub fn combine(_res: f32, _implicits: Vec<A>) -> OrThese<Polygon> {
+        unimplemented!();
     }
 }
 

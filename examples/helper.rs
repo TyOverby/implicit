@@ -8,6 +8,7 @@ use lux::color;
 use lux::interactive::Event;
 
 use implicit::*;
+use implicit::geom::*;
 
 struct ImplicitCanvas {
     draw_scale: f32,
@@ -22,37 +23,33 @@ impl ImplicitCanvas {
     }
 
     fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        let mut scene = Scene::new(vec![GenericShape::Ref(shape)]);
-        scene.resolution = 2.0 * self.resolution;
-        let rendered_objects = scene.render(false);
-        for RenderedObject(paths) in rendered_objects {
-//          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
-            let colors = vec![lux::color::BLACK];
-            let mut colors = colors.iter().cloned().cycle();
+        let paths = render(shape, 2.0 * self.resolution, false);
+        //          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
+        let colors = vec![lux::color::BLACK];
+        let mut colors = colors.iter().cloned().cycle();
 
-            let _total = paths.len();
-            let mut _joined = 0;
-            for path in paths {
-                frame.color(colors.next().unwrap());
-                match path {
-                    LineType::Joined(mut r) => {
-                        _joined += 1;
-                        if let Some(last) = r.first().cloned() {
-                            r.push(last);
-                        }
-                        let pts = r.into_iter().map(|Point{x, y}| {
-                            let (dx, dy, _) = self.sample_to_draw((x, y));
-                            (dx, dy)
-                        });
-                        frame.draw_lines(pts, 1.0);
+        let _total = paths.len();
+        let mut _joined = 0;
+        for path in paths {
+            frame.color(colors.next().unwrap());
+            match path {
+                LineType::Joined(mut r) => {
+                    _joined += 1;
+                    if let Some(last) = r.first().cloned() {
+                        r.push(last);
                     }
-                    LineType::Unjoined(r) => {
-                        let pts = r.into_iter().map(|Point{x, y}| {
-                            let (dx, dy, _) = self.sample_to_draw((x, y));
-                            (dx, dy)
-                        });
-                        frame.draw_lines(pts, 1.0);
-                    }
+                    let pts = r.into_iter().map(|Point{x, y}| {
+                        let (dx, dy, _) = self.sample_to_draw((x, y));
+                        (dx, dy)
+                    });
+                    frame.draw_lines(pts, 1.0);
+                }
+                LineType::Unjoined(r) => {
+                    let pts = r.into_iter().map(|Point{x, y}| {
+                        let (dx, dy, _) = self.sample_to_draw((x, y));
+                        (dx, dy)
+                    });
+                    frame.draw_lines(pts, 1.0);
                 }
             }
         }
@@ -66,8 +63,8 @@ impl ImplicitCanvas {
                 let dot_size = ds / 5.0;
                 let dot_offset = dot_size / 2.0;
                 frame.square(dpx - dot_offset, dpy - dot_offset, dot_size)
-                     .color(rgb(1.0, 0.0, 0.0))
-                     .fill();
+                    .color(rgb(1.0, 0.0, 0.0))
+                    .fill();
             }
         }
     }
@@ -84,8 +81,8 @@ impl ImplicitCanvas {
                 rgba(0.0, -sample / factor, 0.0, 1.0)
             };
             frame.square(dx - 0.5 * ds, dy - 0.5 * ds, ds)
-                 .color(color)
-                 .fill();
+                .color(color)
+                .fill();
         }
         self.draw_rect(&shape.bounding_box().unwrap(), frame);
     }
@@ -93,8 +90,8 @@ impl ImplicitCanvas {
     fn draw_rect(&self, rect: &Rect, frame: &mut Frame) {
         frame.with_scale(self.draw_scale, self.draw_scale, |frame| {
             frame.rect(rect.top_left.x, rect.top_left.y, rect.width(), rect.height())
-                 .border(1.0, (0.0, 0.0, 1.0))
-                 .stroke();
+                .border(1.0, (0.0, 0.0, 1.0))
+                .stroke();
         });
     }
 
@@ -168,4 +165,8 @@ pub fn display(all: Vec<(&Implicit, Display)>) {
 
         dirty = canvas.process_events(&mut window);
     }
+}
+
+fn main() {
+    panic!("not actually an example");
 }
