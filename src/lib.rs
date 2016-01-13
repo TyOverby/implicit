@@ -10,7 +10,6 @@ mod private;
 
 pub use private::render::{render, sampling_points};
 pub use private::geom;
-pub use private::line_join::LineType;
 pub use private::quadtree::QuadTree;
 
 use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};

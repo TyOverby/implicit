@@ -1,10 +1,10 @@
-use super::{LineType, simplify_line, connect_lines, Point, MarchResult, march, Rect, Line};
+use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line};
 
 use ::Implicit;
 use crossbeam;
 use flame;
 
-pub fn render<A: Implicit>(object: &A, resolution: f32, simplify: bool) -> Vec<LineType> {
+pub fn render<A: Implicit>(object: &A, resolution: f32, simplify: bool) -> Vec<Vec<Point>> {
         let bb = match object.bounding_box() {
             Some(bb) => bb,
             None => panic!("top level no bb"),
@@ -17,16 +17,7 @@ pub fn render<A: Implicit>(object: &A, resolution: f32, simplify: bool) -> Vec<L
 
         let (mut connected_lines, _tree) = connect_lines(lines, resolution);
         if simplify {
-            let mut simplified = vec![];
-            for path in connected_lines {
-                match path {
-                    LineType::Joined(v) =>
-                        simplified.push(LineType::Joined(simplify_line(v))),
-                        LineType::Unjoined(v) =>
-                            simplified.push(LineType::Unjoined(simplify_line(v))),
-                }
-            }
-            connected_lines = simplified;
+            connected_lines = connected_lines.into_iter().map(simplify_line).collect();
         }
 
         connected_lines

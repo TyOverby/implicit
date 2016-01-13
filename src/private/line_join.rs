@@ -5,7 +5,7 @@ use super::*;
 const EPSILON: f32 = 0.001;
 
 #[derive(Debug)]
-pub enum LineType {
+enum LineType {
     Joined(Vec<Point>),
     Unjoined(Vec<Point>)
 }
@@ -18,7 +18,7 @@ impl LineType {
     }
 }
 
-pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Line>) {
+pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<Vec<Point>>, QuadTree<Line>) {
     let (mut joined, qt) = join_lines(lines, resolution);
 
     loop {
@@ -42,7 +42,11 @@ pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadT
         }
     });
 
-    (joined, qt)
+    (joined.into_iter().map(|lt| {
+        match lt {
+            LineType::Joined(r) | LineType::Unjoined(r) => r
+        }
+    }).collect(), qt)
 }
 
 pub fn simplify_line(pts: Vec<Point>) -> Vec<Point> {
