@@ -28,30 +28,17 @@ impl ImplicitCanvas {
         let colors = vec![lux::color::BLACK];
         let mut colors = colors.iter().cloned().cycle();
 
-        let _total = paths.len();
-        let mut _joined = 0;
         for path in paths {
             frame.color(colors.next().unwrap());
-            match path {
-                LineType::Joined(mut r) => {
-                    _joined += 1;
-                    if let Some(last) = r.first().cloned() {
-                        r.push(last);
-                    }
-                    let pts = r.into_iter().map(|Point{x, y}| {
-                        let (dx, dy, _) = self.sample_to_draw((x, y));
-                        (dx, dy)
-                    });
-                    frame.draw_lines(pts, 1.0);
-                }
-                LineType::Unjoined(r) => {
-                    let pts = r.into_iter().map(|Point{x, y}| {
-                        let (dx, dy, _) = self.sample_to_draw((x, y));
-                        (dx, dy)
-                    });
-                    frame.draw_lines(pts, 1.0);
-                }
+            let mut r = path;
+            if let Some(last) = r.first().cloned() {
+                r.push(last);
             }
+            let pts = r.into_iter().map(|Point{x, y}| {
+                let (dx, dy, _) = self.sample_to_draw((x, y));
+                (dx, dy)
+            });
+            frame.draw_lines(pts, 1.0);
         }
     }
 
