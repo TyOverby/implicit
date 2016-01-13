@@ -4,6 +4,79 @@ use ::Implicit;
 use crossbeam;
 use flame;
 
+pub enum RenderMode {
+    /// The shape is filled in and completely solid.
+    Solid,
+    /// The shape is traced with an outline.
+    Outline,
+    /// The shape is traced with a dashed outline.
+    ///
+    /// The dash-segment length and gap length are
+    /// pulled from the vector in an alternating
+    /// pattern.
+    ///
+    /// [1.0, 2.0, 3.0, 4.0, 5.0] would produce the line
+    /// -  ---    -----
+    /// 1 2 3  4    5
+    BasicDashed(Vec<f32>),
+    /// The shape is traced with a dashed outline.
+    ///
+    /// The dash-segment length and gap length
+    /// are stretched to repeat exactly N times.
+    DashedRepeatingN(Vec<f32>, u32),
+    /// The shape is traced with a dashed outline that
+    /// wraps around to end exactly where it began.
+    ///
+    /// The dash-segment length and gap length are
+    /// stretched the smallest amount to make the
+    /// ends meet.
+    DashedPerfect(Vec<f32>)
+}
+
+pub enum OutputMode {
+    Solid(Vec<Vec<Point>>),
+    Outline(Vec<Vec<Point>>),
+    DashedLine(Vec<DashedData>)
+}
+
+pub struct DashedData {
+    sizes: Vec<u32>,
+    points: Vec<Point>
+}
+
+pub struct SegmentIter<'a> {
+    data: &'a DashedData,
+    last_segment_idx: usize,
+    last_points_pos: usize,
+}
+
+impl <'a> Iterator for SegmentIter<'a> {
+    type Item = &'a[Point];
+    fn next(&mut self) -> Option<&'a [Point]> {
+        if self.last_segment_idx >= self.data.sizes.len() {
+            return None
+        } 
+        let size_of_segment = self.data.sizes[self.last_segment_idx + 1];
+        let slice = &self.data.points[
+            self.last_points_pos ..
+            self.last_points_pos + size_of_segment as usize];
+
+        self.last_segment_idx += 1;
+        self.last_points_pos += size_of_segment as usize;
+        Some(slice)
+    }
+}
+
+impl DashedData {
+    fn segments(&self) -> SegmentIter {
+        SegmentIter {
+            data: self,
+            last_segment_idx: 0,
+            last_points_pos: 0,
+        }
+    }
+}
+
 pub fn render<A: Implicit>(object: &A, resolution: f32, simplify: bool) -> Vec<Vec<Point>> {
         let bb = match object.bounding_box() {
             Some(bb) => bb,
