@@ -33,6 +33,9 @@ pub trait Implicit: Sync + Send {
         Box::new(self)
     }
 
+    /// True if the shape follows all the rules about implicit shapes.
+    fn follows_rules(&self) -> bool;
+
     fn and<B: Implicit>(self, other: B) -> And<Self, B> where Self: Sized {
         And {
             left: self,
@@ -115,6 +118,8 @@ pub trait Implicit: Sync + Send {
         self
     }
 }
+
+
 
 pub enum GenericShape<'a> {
     Circle(Circle),
@@ -231,6 +236,10 @@ impl <A: Implicit> Implicit for OrThese<A> {
             Some(bb)
         }
     }
+
+    fn follows_rules(&self) -> bool {
+        self.targets.iter().all(|a| a.follows_rules())
+    }
 }
 
 impl <A: Implicit> Implicit for AndThese<A> {
@@ -259,6 +268,10 @@ impl <A: Implicit> Implicit for AndThese<A> {
         } else {
             Some(bb)
         }
+    }
+
+    fn follows_rules(&self) -> bool {
+        self.targets.iter().all(|a| a.follows_rules())
     }
 }
 
@@ -295,6 +308,10 @@ impl <A: Implicit> Implicit for Transformation<A> {
 
         Some(rect)
     }
+
+    fn follows_rules(&self) -> bool {
+        self.target.follows_rules()
+    }
 }
 
 impl <'a> Implicit for &'a Implicit {
@@ -304,6 +321,10 @@ impl <'a> Implicit for &'a Implicit {
 
     fn bounding_box(&self) -> Option<Rect> {
         (**self).bounding_box()
+    }
+
+    fn follows_rules(&self) -> bool {
+        (**self).follows_rules()
     }
 }
 
@@ -315,6 +336,10 @@ impl <A: Implicit + ?Sized> Implicit for Box<A> {
     fn bounding_box(&self) -> Option<Rect> {
         (**self).bounding_box()
     }
+
+    fn follows_rules(&self) -> bool {
+        (**self).follows_rules()
+    }
 }
 
 impl <A: Implicit + ?Sized + Sync + Send> Implicit for Arc<A> {
@@ -324,6 +349,10 @@ impl <A: Implicit + ?Sized + Sync + Send> Implicit for Arc<A> {
 
     fn bounding_box(&self) -> Option<Rect> {
         (**self).bounding_box()
+    }
+
+    fn follows_rules(&self) -> bool {
+        (**self).follows_rules()
     }
 }
 
@@ -359,6 +388,22 @@ impl <'a> Implicit for GenericShape<'a> {
             &GenericShape::Ref(ref t) => t.bounding_box(),
         }
     }
+
+    fn follows_rules(&self) -> bool {
+        match self {
+            &GenericShape::Circle(ref circle) => circle.follows_rules(),
+            &GenericShape::Polygon(ref poly) => poly.follows_rules(),
+            &GenericShape::And(ref and) => and.follows_rules(),
+            &GenericShape::Or(ref or) => or.follows_rules(),
+            &GenericShape::Xor(ref xor) => xor.follows_rules(),
+            &GenericShape::Boundary(ref b) => b.follows_rules(),
+            &GenericShape::Not(ref n) => n.follows_rules(),
+            &GenericShape::BoxCache(ref c) => c.follows_rules(),
+            &GenericShape::Transformation(ref t) => t.follows_rules(),
+            &GenericShape::Boxed(ref t) => t.follows_rules(),
+            &GenericShape::Ref(ref t) => t.follows_rules(),
+        }
+    }
 }
 
 impl <I: Implicit> Implicit for BoxCache<I> {
@@ -368,6 +413,9 @@ impl <I: Implicit> Implicit for BoxCache<I> {
     fn bounding_box(&self) -> Option<Rect> {
         self.cache
     }
+    fn follows_rules(&self) -> bool {
+        self.target.follows_rules()
+    }
 }
 
 impl <I: Implicit> Implicit for Not<I> {
@@ -376,6 +424,9 @@ impl <I: Implicit> Implicit for Not<I> {
     }
     fn bounding_box(&self) -> Option<Rect> {
         None
+    }
+    fn follows_rules(&self) -> bool {
+        self.target.follows_rules()
     }
 }
 
@@ -434,6 +485,7 @@ impl Implicit for Polygon {
 
         Some(Rect::from_points(&Point{x: min_x, y: min_y}, &Point{x: max_x, y: max_y}))
     }
+    fn follows_rules(&self) -> bool { true }
 }
 
 impl Implicit for Circle {
@@ -460,6 +512,7 @@ impl Implicit for Circle {
             }
         })
     }
+    fn follows_rules(&self) -> bool { true }
 }
 
 impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
@@ -477,6 +530,11 @@ impl <A: Implicit, B: Implicit> Implicit for And<A, B> {
             (None, Some(right_bb)) => Some(right_bb),
             (None, None) => None
         }
+    }
+
+    fn follows_rules(&self) -> bool {
+        self.left.follows_rules() &&
+        self.right.follows_rules()
     }
 }
 
@@ -498,6 +556,11 @@ impl <A: Implicit, B: Implicit> Implicit for Or<A, B> {
             (Some(left_bb), Some(right_bb)) => Some(left_bb.union_with(&right_bb)),
             (_, _) => None
         }
+    }
+
+    fn follows_rules(&self) -> bool {
+        self.left.follows_rules() &&
+        self.right.follows_rules()
     }
 }
 
@@ -538,6 +601,11 @@ impl <A: Implicit, B: Implicit> Implicit for Xor<A, B> {
             (_, _) => None
         }
     }
+
+    fn follows_rules(&self) -> bool {
+        self.left.follows_rules() &&
+        self.right.follows_rules()
+    }
 }
 
 impl <A: Implicit> Implicit for Boundary<A> {
@@ -547,6 +615,10 @@ impl <A: Implicit> Implicit for Boundary<A> {
 
     fn bounding_box(&self) -> Option<Rect> {
         self.target.bounding_box().map(|r| r.expand(self.move_by, self.move_by, self.move_by, self.move_by))
+    }
+
+    fn follows_rules(&self) -> bool {
+        self.target.follows_rules()
     }
 }
 
@@ -583,4 +655,6 @@ impl Implicit for Rectangle {
     fn bounding_box(&self) -> Option<Rect> {
         self.poly.bounding_box()
     }
+
+    fn follows_rules(&self) -> bool { true }
 }
