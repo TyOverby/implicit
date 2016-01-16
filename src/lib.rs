@@ -8,7 +8,7 @@ extern crate flame;
 
 mod private;
 
-pub use private::render::{render, sampling_points};
+pub use private::render::{render, sampling_points, RenderMode, OutputMode};
 pub use private::geom;
 pub use private::quadtree::QuadTree;
 

@@ -15,15 +15,16 @@ pub enum RenderMode {
     /// pulled from the vector in an alternating
     /// pattern.
     ///
-    /// [1.0, 2.0, 3.0, 4.0, 5.0] would produce the line
-    /// -  ---    -----
-    /// 1 2 3  4    5
+    /// [1.0, 2.0, 3.0, 4.0, 5.0, 6.0] would produce the line
+    ///
+    /// -  ---    -----      -  ---    -----
+    /// 1 2 3  4    5     6  1 2 3   4   5    6
     BasicDashed(Vec<f32>),
     /// The shape is traced with a dashed outline.
     ///
     /// The dash-segment length and gap length
     /// are stretched to repeat exactly N times.
-    DashedRepeatingN(Vec<f32>, u32),
+    DashedRepeatingN(Vec<f32>, f32),
     /// The shape is traced with a dashed outline that
     /// wraps around to end exactly where it began.
     ///
@@ -77,7 +78,65 @@ impl DashedData {
     }
 }
 
-pub fn render<A: Implicit>(object: &A, resolution: f32, simplify: bool) -> Vec<Vec<Point>> {
+fn circumfrence(pts: &[Point]) -> f32 {
+    if pts.len() == 0 { return 0.0; }
+
+    let mut dist = 0.0;
+    for window in pts.windows(2) {
+        let p1 = window[0];
+        let p2 = window[1];
+        dist += p1.distance(&p2);
+    }
+    let first = pts[0];
+    let last = pts[pts.len() - 1];
+    dist += first.distance(&last);
+    dist
+}
+
+fn transform(points: Vec<Vec<Point>>, mode: RenderMode) -> OutputMode {
+    use super::{dashify, DashSegment};
+    fn make_dash(pts: Vec<Point>, dash: &[f32]) -> DashedData {
+        let dashed = dashify(pts.into_iter(), dash.iter().cloned());
+        let mut lengths = Vec::with_capacity(dashed.len());
+        let mut pts = vec![];
+        for DashSegment(segment) in dashed {
+            lengths.push(segment.len() as u32);
+            pts.extend(segment);
+        }
+        DashedData { sizes: lengths, points: pts }
+    }
+
+    match mode {
+        RenderMode::Solid => OutputMode::Solid(points),
+        RenderMode::Outline => OutputMode::Outline(points),
+        RenderMode::BasicDashed(dash) => {
+            OutputMode::DashedLine(points.into_iter()
+                                         .map(|pts| make_dash(pts, &dash[..]))
+                                         .collect())
+        },
+        RenderMode::DashedRepeatingN(dash, n) => {
+            OutputMode::DashedLine(points.into_iter().map(|pts| {
+                let circ = circumfrence(&pts);
+                let dash_total = dash.iter().fold(0.0, |a, b| a + b);
+
+                let size_of_one_repeat = circ / n;
+                let scale_factor = dash_total / size_of_one_repeat;
+                let modified_dash = dash.iter()
+                                        .map(|&l| l * scale_factor)
+                                        .collect::<Vec<_>>();
+                make_dash(pts, &modified_dash[..])
+            }).collect())
+        },
+        RenderMode::DashedPerfect(dash) => {
+            unimplemented!();
+        }
+    }
+}
+
+pub fn render<A: Implicit>(object: &A,
+                           rm: RenderMode,
+                           resolution: f32,
+                           simplify: bool) -> OutputMode {
         let bb = match object.bounding_box() {
             Some(bb) => bb,
             None => panic!("top level no bb"),
@@ -93,7 +152,7 @@ pub fn render<A: Implicit>(object: &A, resolution: f32, simplify: bool) -> Vec<V
             connected_lines = connected_lines.into_iter().map(simplify_line).collect();
         }
 
-        connected_lines
+        transform(connected_lines, rm)
 }
 
 fn gather_lines<S: Implicit>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {

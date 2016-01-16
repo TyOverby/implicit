@@ -23,10 +23,15 @@ impl ImplicitCanvas {
     }
 
     fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
-        let paths = render(shape, 2.0 * self.resolution, false);
+        let paths = render(shape, RenderMode::Outline, 2.0 * self.resolution, false);
         //          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
         let colors = vec![lux::color::BLACK];
         let mut colors = colors.iter().cloned().cycle();
+
+        let paths = match paths {
+            OutputMode::Outline(p) => p,
+            _ => panic!("not outline somehow!")
+        };
 
         for path in paths {
             frame.color(colors.next().unwrap());
