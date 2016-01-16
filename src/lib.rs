@@ -117,6 +117,19 @@ pub trait Implicit: Sync + Send {
     fn borrow(&self) -> &Self where Self: Sized {
         self
     }
+
+    fn fix_rules(&self, resolution: f32) -> PolyGroup where Self: Sized {
+        let rendered = render(self, RenderMode::Outline, resolution, true);
+        let lines = if let OutputMode::Outline(lines) = rendered {
+            lines
+        } else {
+            panic!("somehow didn't get outline.");
+        };
+
+        PolyGroup {
+            polys: lines.into_iter().map(|p| Polygon::new(p.into_iter())).collect()
+        }
+    }
 }
 
 
@@ -133,6 +146,11 @@ pub enum GenericShape<'a> {
     Boxed(Box<Implicit>),
     Transformation(Transformation<Box<GenericShape<'a>>>),
     Ref(&'a Implicit)
+}
+
+#[derive(Clone)]
+pub struct PolyGroup {
+    polys: Vec<Polygon>
 }
 
 #[derive(Copy, Clone)]
@@ -198,6 +216,34 @@ pub struct Transformation<A: Implicit> {
     pub matrix: Matrix,
 }
 
+impl Implicit for PolyGroup {
+    fn sample(&self, pos: Point) -> f32 {
+        const INF: f32 = ::std::f32::INFINITY;
+        let sampled = self.polys.iter().map(|a| a.sample(pos)).collect::<Vec<_>>();
+        let inside_count = sampled.iter().filter(|&&a| a < 0.0).count();
+        let closest = sampled.iter().fold(INF, |best, contender| {
+            let contender = contender.abs();
+            if contender < best { contender } else { best }
+        });
+
+        if inside_count % 2 == 0 {
+            closest
+        } else {
+            -closest
+        }
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        Some(self.polys.iter()
+                       .map(|a| a.bounding_box().unwrap())
+                       .fold(Rect::null(), |a, b| {
+                           a.union_with(&b)
+                        }))
+    }
+
+    fn follows_rules(&self) -> bool { true }
+}
+
 impl <A: Implicit> Transformation<A> {
     pub fn new(a: A) -> Transformation<A> {
         Transformation {
@@ -208,8 +254,14 @@ impl <A: Implicit> Transformation<A> {
 }
 
 impl <A: Implicit> OrThese<A> {
-    pub fn combine(_res: f32, _implicits: Vec<A>) -> OrThese<Polygon> {
-        unimplemented!();
+    pub fn new(targets: Vec<A>) -> OrThese<A> {
+        OrThese { targets: targets }
+    }
+}
+
+impl <A: Implicit> AndThese<A> {
+    pub fn new(targets: Vec<A>) -> AndThese<A> {
+        AndThese { targets: targets }
     }
 }
 

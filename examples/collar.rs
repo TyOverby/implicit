@@ -17,7 +17,7 @@ const HOLE_SPACING: f32 = 0.25 + HOLE_RADIUS * 2.0;
 const HOLE_OFFSET: f32 = 0.5;
 const STITCH_OFFSET: f32 = 0.1;
 
-fn front_outline() -> OrThese<Polygon> {
+fn front_outline() -> PolyGroup {
     let main_front_rect = Rectangle::new(Rect::from_points(
             &Point {x: 0.0, y: 0.0},
             &Point {x: FRONT_LEN, y: MAIN_HEIGHT}));
@@ -32,11 +32,11 @@ fn front_outline() -> OrThese<Polygon> {
             Point { x: FRONT_LEN, y: 0.0 },
             Point { x: FRONT_LEN, y: MAIN_HEIGHT }].into_iter());
 
-    OrThese::combine(0.1, vec![
+    OrThese::new(vec![
         Box::new(main_front_rect) as Box<Implicit>,
         Box::new(left_triangle.clone()) as Box<Implicit>,
         Box::new(right_triangle.clone()) as Box<Implicit>,
-    ])
+    ]).fix_rules(0.01)
 }
 
 fn holes() -> Vec<Box<implicit::Implicit>> {
@@ -74,7 +74,7 @@ fn main() {
     let f = GenericShape::Boxed(Box::new(front_collar));
 
     helper::display(vec![
-        (&f.scale(100.0, 100.0).translate(50.0, 50.0),              helper::Display::Lines),
-        (&outline_stitch.scale(100.0, 100.0).translate(50.0, 50.0), helper::Display::Lines),
+        (&f.scale(100.0, 100.0).translate(50.0, 350.0),              helper::Display::Pixels),
+        (&outline_stitch.scale(100.0, 100.0).translate(50.0, 50.0), helper::Display::Pixels),
                     ]);
 }
