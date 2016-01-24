@@ -190,12 +190,14 @@ fn gather_lines<S: Implicit>(resolution: f32, sample_points: Vec<(f32, f32)>, sh
 }
 
 pub fn sampling_points(bb: Rect, resolution: f32) -> Vec<(f32, f32)> {
+    let width = bb.width();
+    let height = bb.height();
     let start = bb.top_left;
     let end = bb.bottom_right;
-    let start_x = start.x - resolution * 2.0;
-    let start_y = start.y - resolution * 2.0;
-    let end_x = end.x + resolution * 2.0;
-    let end_y = end.y + resolution * 2.0;
+    let start_x = start.x - width / 10.0 - resolution * 2.0;
+    let start_y = start.y - height / 10.0 - resolution * 2.0;
+    let end_x = end.x + width / 10.0 + resolution * 2.0;
+    let end_y = end.y + height / 10.0 + resolution * 2.0;
 
     let segments_x = (end_x - start_x) / resolution;
     let segments_y = (end_y - start_y) / resolution;

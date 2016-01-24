@@ -110,8 +110,12 @@ pub trait Implicit: Sync + Send {
         Not { target: self}
     }
 
-    fn outline(self, distance: f32) -> And<Self, Not<Boundary<Self>>> where Self: Sized + Clone {
+    fn outline_inner(self, distance: f32) -> And<Self, Not<Boundary<Self>>> where Self: Sized + Clone {
         self.clone().and(self.shrink(distance).not())
+    }
+
+    fn outline_outer(self, distance: f32) -> And<Boundary<Self>, Not<Self>> where Self: Sized + Clone {
+        self.clone().grow(distance).and(self.not())
     }
 
     fn borrow(&self) -> &Self where Self: Sized {
@@ -148,7 +152,7 @@ pub enum GenericShape<'a> {
     Ref(&'a Implicit)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PolyGroup {
     polys: Vec<Polygon>
 }

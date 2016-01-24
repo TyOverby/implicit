@@ -63,18 +63,20 @@ fn holes() -> Vec<Box<implicit::Implicit>> {
 }
 
 fn main() {
-    let front_collar = front_outline();
-    let outline_stitch = front_collar.clone().shrink(STITCH_OFFSET);
+    let front_outline = front_outline();
+    let outline_stitch = front_outline.clone().shrink(STITCH_OFFSET);
     let holes = holes();
 
+    println!("{:#?}", front_outline);
+
     let mut targets = holes;
-    targets.push(front_collar.boxed());
+    targets.push(front_outline.clone().boxed());
     let front_collar = AndThese { targets: targets };
 
     let f = GenericShape::Boxed(Box::new(front_collar));
 
     helper::display(vec![
-        (&f.scale(100.0, 100.0).translate(50.0, 350.0),              helper::Display::Pixels),
-        (&outline_stitch.scale(100.0, 100.0).translate(50.0, 50.0), helper::Display::Pixels),
-                    ]);
+        //(&f.scale(100.0, 100.0).translate(50.0, 350.0),              helper::Display::Pixels),
+        (&front_outline.scale(1.0, 1.0).translate(50.0, 50.0), helper::Display::Pixels),
+    ]);
 }

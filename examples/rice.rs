@@ -42,13 +42,12 @@ fn main() {
 
 
     let finished = main_rect.and_not(cutout)
-                            .or(wire_1.outline(wire_size))
-                            .or(wire_2.outline(wire_size))
-                            .or(wire_3.outline(wire_size))
-                            .or(wire_4.outline(wire_size))
-                            .or(center.outline(wire_size));
-
-    let f = GenericShape::Boxed(Box::new(finished.grow(0.00)));
+                            .or(wire_1.outline_inner(wire_size))
+                            .or(wire_2.outline_inner(wire_size))
+                            .or(wire_3.outline_inner(wire_size))
+                            .or(wire_4.outline_inner(wire_size))
+                            .or(center.outline_inner(wire_size));
+    let f = GenericShape::Boxed(Box::new(finished));
     let f = f.scale(100.0, 100.0);
 
     helper::display(vec![(&f, helper::Display::Lines)]);
