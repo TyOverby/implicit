@@ -137,22 +137,32 @@ pub fn render<A: Implicit>(object: &A,
                            rm: RenderMode,
                            resolution: f32,
                            simplify: bool) -> OutputMode {
-        let bb = match object.bounding_box() {
-            Some(bb) => bb,
-            None => panic!("top level no bb"),
-        };
+    const FACTOR: f32 = 100.0;
+    let object = (object as &Implicit).scale(FACTOR, FACTOR);
+    let resolution = resolution * FACTOR;
+    let bb = match object.bounding_box() {
+        Some(bb) => bb,
+        None => panic!("top level no bb"),
+    };
 
-        let sample_points = sampling_points(bb, resolution);
-        flame::start("gather lines");
-        let lines = gather_lines(resolution, sample_points, object);
-        flame::end("gather lines");
+    let sample_points = sampling_points(bb, resolution);
+    flame::start("gather lines");
+    let lines = gather_lines(resolution, sample_points, &object);
+    flame::end("gather lines");
 
-        let (mut connected_lines, _tree) = connect_lines(lines, resolution);
-        if simplify {
-            connected_lines = connected_lines.into_iter().map(simplify_line).collect();
+    let (mut connected_lines, _tree) = connect_lines(lines, resolution);
+    if simplify {
+        connected_lines = connected_lines.into_iter().map(simplify_line).collect();
+    }
+
+    for group in &mut connected_lines {
+        for &mut Point { ref mut x, ref mut y } in group.iter_mut() {
+            *x /= FACTOR;
+            *y /= FACTOR;
         }
+    }
 
-        transform(connected_lines, rm)
+    transform(connected_lines, rm)
 }
 
 fn gather_lines<S: Implicit>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
