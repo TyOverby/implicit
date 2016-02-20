@@ -76,7 +76,7 @@ fn main() {
     let f = GenericShape::Boxed(Box::new(front_collar));
 
     helper::display(vec![
-        (&f.scale(100.0, 100.0).translate(50.0, 350.0),            helper::Display::Pixels),
-        (&front_outline.scale(100.0, 100.0).translate(50.0, 50.0), helper::Display::Pixels),
+        (&f.scale(100.0, 100.0).translate(50.0, 350.0),            helper::Display::Lines),
+        (&front_outline.scale(100.0, 100.0).translate(50.0, 50.0), helper::Display::Lines),
     ]);
 }
