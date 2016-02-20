@@ -133,12 +133,11 @@ fn transform(points: Vec<Vec<Point>>, mode: RenderMode) -> OutputMode {
     }
 }
 
-pub fn render<A: Implicit>(object: &A,
-                           rm: RenderMode,
-                           resolution: f32,
-                           simplify: bool) -> OutputMode {
+pub fn render<A>( object: A, rm: RenderMode, resolution: f32, simplify: bool) -> OutputMode
+where A: Implicit + Sync {
+
     const FACTOR: f32 = 100.0;
-    let object = (object as &Implicit).scale(FACTOR, FACTOR);
+    let object = Implicit::scale(object, FACTOR, FACTOR);
     let resolution = resolution * FACTOR;
     let bb = match object.bounding_box() {
         Some(bb) => bb,
@@ -165,7 +164,7 @@ pub fn render<A: Implicit>(object: &A,
     transform(connected_lines, rm)
 }
 
-fn gather_lines<S: Implicit>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
+fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
     let chunks = sample_points.chunks(sample_points.len() / 8 + 1);
     let chunks: Vec<Vec<_>> = chunks.map(|a| a.to_vec()).collect();
     let lines = crossbeam::scope(|scope| {
@@ -200,6 +199,7 @@ fn gather_lines<S: Implicit>(resolution: f32, sample_points: Vec<(f32, f32)>, sh
 }
 
 pub fn sampling_points(bb: Rect, resolution: f32) -> Vec<(f32, f32)> {
+    assert!(!bb.is_null());
     let width = bb.width();
     let height = bb.height();
     let start = bb.top_left;

@@ -32,14 +32,11 @@ fn front_outline() -> PolyGroup {
             Point { x: FRONT_LEN, y: 0.0 },
             Point { x: FRONT_LEN, y: MAIN_HEIGHT }].into_iter());
 
-    OrThese::new(vec![
-        Box::new(main_front_rect) as Box<Implicit>,
-        Box::new(left_triangle.clone()) as Box<Implicit>,
-        Box::new(right_triangle.clone()) as Box<Implicit>,
-    ]).fix_rules(0.01)
+
+    main_front_rect.or(left_triangle).or(right_triangle).fix_rules(0.01)
 }
 
-fn holes() -> Vec<Box<implicit::Implicit>> {
+fn holes() -> Vec<Not<Circle>> {
     let mut holes = vec![];
     for i in 0 .. 4 {
         holes.push(
@@ -49,7 +46,7 @@ fn holes() -> Vec<Box<implicit::Implicit>> {
                     y: MAIN_HEIGHT / 2.0
                 },
                 radius: HOLE_RADIUS
-            }.not().boxed());
+            }.not());
         holes.push(
             Circle {
                 center: Point {
@@ -57,26 +54,22 @@ fn holes() -> Vec<Box<implicit::Implicit>> {
                     y: MAIN_HEIGHT / 2.0
                 },
                 radius: HOLE_RADIUS
-            }.not().boxed());
+            }.not());
     }
     holes
 }
 
 fn main() {
-    let front_outline = front_outline();
+    let front_outline = front_outline().smooth(0.2, 0.01);
     let outline_stitch = front_outline.clone().shrink(STITCH_OFFSET);
-    let holes = holes();
 
-    println!("{:#?}", front_outline);
-
-    let mut targets = holes;
+    let mut targets: Vec<SyncBox> = holes().into_iter().map(|a| a.boxed()).collect();
     targets.push(front_outline.clone().boxed());
+
     let front_collar = AndThese { targets: targets };
 
-    let f = GenericShape::Boxed(Box::new(front_collar));
-
     helper::display(vec![
-        (&f.scale(100.0, 100.0).translate(50.0, 350.0),            helper::Display::Lines),
-        (&front_outline.scale(100.0, 100.0).translate(50.0, 50.0), helper::Display::Lines),
+        (front_collar.scale(100.0, 100.0).translate(50.0, 350.0).boxed(),            helper::Display::Lines),
+        (front_outline.scale(100.0, 100.0).translate(50.0, 50.0).boxed(), helper::Display::Lines),
     ]);
 }

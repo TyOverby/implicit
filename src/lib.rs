@@ -16,7 +16,7 @@ use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};
 use std::sync::Arc;
 
 // TODO: this should be unsized
-pub trait Implicit: Sync + Send {
+pub trait Implicit {
     /// Returns the distance from a point to the nearest edge of a surface.
     ///
     /// If the point is outside of the surface, return a positive number.
@@ -29,8 +29,8 @@ pub trait Implicit: Sync + Send {
     /// If the shape is infinite, return None.
     fn bounding_box(&self) -> Option<Rect>;
 
-    fn boxed(self) -> Box<Implicit> where Self: Sized + 'static {
-        Box::new(self)
+    fn boxed(self) -> SyncBox where Self: Sized + 'static + Sync {
+        SyncBox { inner: Box::new(self) }
     }
 
     /// True if the shape follows all the rules about implicit shapes.
@@ -118,11 +118,11 @@ pub trait Implicit: Sync + Send {
         self.clone().grow(distance).and(self.not())
     }
 
-    fn borrow(&self) -> &Self where Self: Sized {
+    fn borrow<'a>(&'a self) -> &'a Implicit where Self: Sized {
         self
     }
 
-    fn fix_rules(&self, resolution: f32) -> PolyGroup where Self: Sized {
+    fn fix_rules(self, resolution: f32) -> PolyGroup where Self: Sized + Sync {
         let rendered = render(self, RenderMode::Outline, resolution, true);
         let lines = if let OutputMode::Outline(lines) = rendered {
             lines
@@ -134,22 +134,10 @@ pub trait Implicit: Sync + Send {
             polys: lines.into_iter().map(|p| Polygon::new(p.into_iter())).collect()
         }
     }
-}
 
-
-
-pub enum GenericShape<'a> {
-    Circle(Circle),
-    Polygon(Polygon),
-    And(And<Box<GenericShape<'a>>, Box<GenericShape<'a>>>),
-    Or(Or<Box<GenericShape<'a>>, Box<GenericShape<'a>>>),
-    Xor(Xor<Box<GenericShape<'a>>, Box<GenericShape<'a>>>),
-    Boundary(Boundary<Box<GenericShape<'a>>>),
-    Not(Not<Box<GenericShape<'a>>>),
-    BoxCache(BoxCache<Box<GenericShape<'a>>>),
-    Boxed(Box<Implicit>),
-    Transformation(Transformation<Box<GenericShape<'a>>>),
-    Ref(&'a Implicit)
+    fn smooth(self, amount: f32, resolution: f32) -> Boundary<PolyGroup> where Self: Sized + Sync {
+        self.shrink(amount).fix_rules(resolution).grow(amount)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -157,13 +145,13 @@ pub struct PolyGroup {
     polys: Vec<Polygon>
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Circle {
     pub center: Point,
     pub radius: f32
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Rectangle {
     rect: Rect,
     poly: Polygon
@@ -384,7 +372,7 @@ impl <'a> Implicit for &'a Implicit {
     }
 }
 
-impl <A: Implicit + ?Sized> Implicit for Box<A> {
+impl <'a, A> Implicit for &'a A where A: Implicit + Sized {
     fn sample(&self, pos: Point) -> f32 {
         (**self).sample(pos)
     }
@@ -398,7 +386,28 @@ impl <A: Implicit + ?Sized> Implicit for Box<A> {
     }
 }
 
-impl <A: Implicit + ?Sized + Sync + Send> Implicit for Arc<A> {
+pub struct SyncBox {
+    inner: Box<Implicit + Sync>
+}
+
+impl Implicit for SyncBox {
+    fn sample(&self, pos: Point) -> f32 {
+        self.inner.sample(pos)
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        self.inner.bounding_box()
+    }
+
+    fn follows_rules(&self) -> bool {
+        self.inner.follows_rules()
+    }
+}
+
+unsafe impl Sync for SyncBox { }
+
+/*
+impl <A: Implicit + Sync + Send> Implicit for Arc<A> {
     fn sample(&self, pos: Point) -> f32 {
         (**self).sample(pos)
     }
@@ -410,57 +419,7 @@ impl <A: Implicit + ?Sized + Sync + Send> Implicit for Arc<A> {
     fn follows_rules(&self) -> bool {
         (**self).follows_rules()
     }
-}
-
-impl <'a> Implicit for GenericShape<'a> {
-    fn sample(&self, pos: Point) -> f32 {
-        match self {
-            &GenericShape::Circle(ref circle) => circle.sample(pos),
-            &GenericShape::Polygon(ref poly) => poly.sample(pos),
-            &GenericShape::And(ref and) => and.sample(pos),
-            &GenericShape::Or(ref or) => or.sample(pos),
-            &GenericShape::Xor(ref xor) => xor.sample(pos),
-            &GenericShape::Boundary(ref b) => b.sample(pos),
-            &GenericShape::Not(ref n) => n.sample(pos),
-            &GenericShape::BoxCache(ref c) => c.sample(pos),
-            &GenericShape::Transformation(ref t) => t.sample(pos),
-            &GenericShape::Boxed(ref t) => t.sample(pos),
-            &GenericShape::Ref(ref t) => t.sample(pos),
-        }
-    }
-
-    fn bounding_box(&self) -> Option<Rect> {
-        match self {
-            &GenericShape::Circle(ref circle) => circle.bounding_box(),
-            &GenericShape::Polygon(ref poly) => poly.bounding_box(),
-            &GenericShape::And(ref and) => and.bounding_box(),
-            &GenericShape::Or(ref or) => or.bounding_box(),
-            &GenericShape::Xor(ref xor) => xor.bounding_box(),
-            &GenericShape::Boundary(ref b) => b.bounding_box(),
-            &GenericShape::Not(ref n) => n.bounding_box(),
-            &GenericShape::BoxCache(ref c) => c.bounding_box(),
-            &GenericShape::Transformation(ref t) => t.bounding_box(),
-            &GenericShape::Boxed(ref t) => t.bounding_box(),
-            &GenericShape::Ref(ref t) => t.bounding_box(),
-        }
-    }
-
-    fn follows_rules(&self) -> bool {
-        match self {
-            &GenericShape::Circle(ref circle) => circle.follows_rules(),
-            &GenericShape::Polygon(ref poly) => poly.follows_rules(),
-            &GenericShape::And(ref and) => and.follows_rules(),
-            &GenericShape::Or(ref or) => or.follows_rules(),
-            &GenericShape::Xor(ref xor) => xor.follows_rules(),
-            &GenericShape::Boundary(ref b) => b.follows_rules(),
-            &GenericShape::Not(ref n) => n.follows_rules(),
-            &GenericShape::BoxCache(ref c) => c.follows_rules(),
-            &GenericShape::Transformation(ref t) => t.follows_rules(),
-            &GenericShape::Boxed(ref t) => t.follows_rules(),
-            &GenericShape::Ref(ref t) => t.follows_rules(),
-        }
-    }
-}
+}*/
 
 impl <I: Implicit> Implicit for BoxCache<I> {
     fn sample(&self, pos: Point) -> f32 {

@@ -22,7 +22,7 @@ impl ImplicitCanvas {
          self.resolution as f32 * self.draw_scale)
     }
 
-    fn render_lines<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+    fn render_lines(&self, shape: &SyncBox, frame: &mut Frame) {
         let paths = render(shape, RenderMode::Outline, 2.0 * self.resolution, false);
         //          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
         let colors = vec![lux::color::BLACK];
@@ -47,7 +47,7 @@ impl ImplicitCanvas {
         }
     }
 
-    fn draw_dots<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+    fn draw_dots(&self, shape: &SyncBox, frame: &mut Frame) {
         for (sx, sy) in sampling_points(shape.bounding_box().unwrap(), self.resolution) {
             let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
@@ -61,7 +61,7 @@ impl ImplicitCanvas {
         }
     }
 
-    fn render_pix<S: Implicit>(&self, shape: &S, frame: &mut Frame) {
+    fn render_pix(&self, shape: & SyncBox, frame: &mut Frame) {
         for (sx, sy) in sampling_points(shape.bounding_box().unwrap(), self.resolution) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
@@ -128,7 +128,7 @@ pub enum Display {
     Dots,
 }
 
-pub fn display(all: Vec<(&Implicit, Display)>) {
+pub fn display(all: Vec<(SyncBox, Display)>) {
     let mut window = Window::new_with_defaults().unwrap();
 
     let mut canvas = ImplicitCanvas {
@@ -142,15 +142,16 @@ pub fn display(all: Vec<(&Implicit, Display)>) {
         if dirty {
             let mut frame = window.cleared_frame(color::WHITE);
 
-            for &(t, kind) in &all {
+            for &(ref t, kind) in &all {
+                let t: &SyncBox = t;
                 if kind == Display::Lines {
-                    canvas.render_lines(&t, &mut frame);
+                    canvas.render_lines(t, &mut frame);
                 }
                 if kind == Display::Pixels {
-                    canvas.render_pix(&t, &mut frame);
+                    canvas.render_pix(t, &mut frame);
                 }
                 if kind == Display::Dots {
-                    canvas.draw_dots(&t, &mut frame);
+                    canvas.draw_dots(t, &mut frame);
                 }
             }
         }
