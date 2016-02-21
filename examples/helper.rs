@@ -23,7 +23,7 @@ impl ImplicitCanvas {
     }
 
     fn render_lines(&self, shape: &SyncBox, frame: &mut Frame) {
-        let paths = render(shape, RenderMode::Outline, 2.0 * self.resolution, false);
+        let paths = render(shape, RenderMode::Outline, self.resolution, true);
         //          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
         let colors = vec![lux::color::BLACK];
         let mut colors = colors.iter().cloned().cycle();
@@ -48,21 +48,21 @@ impl ImplicitCanvas {
     }
 
     fn draw_dots(&self, shape: &SyncBox, frame: &mut Frame) {
-        for (sx, sy) in sampling_points(shape.bounding_box().unwrap(), self.resolution) {
+        for (sx, sy) in sampling_points(shape, self.resolution) {
             let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
                 let dot_size = ds / 5.0;
                 let dot_offset = dot_size / 2.0;
                 frame.square(dpx - dot_offset, dpy - dot_offset, dot_size)
-                    .color(rgb(1.0, 0.0, 0.0))
+                    .color(rgba(0.0, 0.0, 0.0, 0.5))
                     .fill();
             }
         }
     }
 
-    fn render_pix(&self, shape: & SyncBox, frame: &mut Frame) {
-        for (sx, sy) in sampling_points(shape.bounding_box().unwrap(), self.resolution) {
+    fn render_pix(&self, shape: &SyncBox, frame: &mut Frame) {
+        for (sx, sy) in sampling_points(shape, self.resolution) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 
@@ -102,7 +102,7 @@ impl ImplicitCanvas {
                     dirty = true;
                 }
                 Event::KeyReleased(_, Some('k'), _) => {
-                    self.resolution *= 0.75f32;
+                    self.resolution /= 1.5f32;
                     dirty = true;
                 }
                 Event::KeyReleased(_, Some('h'), _) => {
@@ -128,12 +128,12 @@ pub enum Display {
     Dots,
 }
 
-pub fn display(all: Vec<(SyncBox, Display)>) {
+pub fn display(resolution: f32, all: Vec<(SyncBox, Display)>) {
     let mut window = Window::new_with_defaults().unwrap();
 
     let mut canvas = ImplicitCanvas {
         draw_scale: 1.0,
-        resolution: 4.0,
+        resolution: resolution,
     };
 
     let mut dirty = true;

@@ -1,6 +1,7 @@
 use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line};
 
 use ::Implicit;
+use std::cmp::{Ord, PartialOrd, Ordering};
 use crossbeam;
 use flame;
 
@@ -40,6 +41,12 @@ pub enum OutputMode {
     DashedLine(Vec<DashedData>)
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct SampleDist {
+    pub x_bump: f32,
+    pub y_bump: f32,
+}
+
 pub struct DashedData {
     sizes: Vec<u32>,
     points: Vec<Point>
@@ -49,6 +56,37 @@ pub struct SegmentIter<'a> {
     data: &'a DashedData,
     last_segment_idx: usize,
     last_points_pos: usize,
+}
+
+impl SampleDist {
+    fn modify_bb(&self, bb: &mut Rect) {
+        let top_left = {
+            let Point{ x, y } = bb.top_left();
+            let (x, y) = self.floor(x, y);
+            Point{x: x, y: y}
+        };
+        let bottom_right = {
+            let Point { x, y } = bb.bottom_right();
+            let (x, y) = self.floor(x, y);
+            Point{x: x, y: y}
+        };
+
+        *bb = Rect::from_points(&top_left, &bottom_right);
+    }
+    fn floor(&self, x: f32, y: f32) -> (f32, f32){
+        let x = x - (x % self.x_bump);
+        let y = y - (y % self.y_bump);
+        (x, y)
+    }
+    fn bump_x(&self, x: f32) -> f32 {
+        x + self.x_bump
+    }
+    fn bump_y(&self, x: f32) -> f32 {
+        x + self.x_bump
+    }
+    fn max_bump(&self) -> f32 {
+        self.x_bump.max(self.y_bump)
+    }
 }
 
 impl <'a> Iterator for SegmentIter<'a> {
@@ -133,18 +171,13 @@ fn transform(points: Vec<Vec<Point>>, mode: RenderMode) -> OutputMode {
     }
 }
 
-pub fn render<A>( object: A, rm: RenderMode, resolution: f32, simplify: bool) -> OutputMode
+pub fn render<A>(object: A, rm: RenderMode, resolution: f32, simplify: bool) -> OutputMode
 where A: Implicit + Sync {
 
-    const FACTOR: f32 = 100.0;
-    let object = Implicit::scale(object, FACTOR, FACTOR);
-    let resolution = resolution * FACTOR;
-    let bb = match object.bounding_box() {
-        Some(bb) => bb,
-        None => panic!("top level no bb"),
-    };
-
-    let sample_points = sampling_points(bb, resolution);
+    const FACTOR: f32 = 1.0;
+//    let object = Implicit::scale(object, FACTOR, FACTOR);
+//    let resolution = resolution * FACTOR;
+    let sample_points = sampling_points(&object, resolution);
     flame::start("gather lines");
     let lines = gather_lines(resolution, sample_points, &object);
     flame::end("gather lines");
@@ -198,32 +231,118 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
     lines
 }
 
-pub fn sampling_points(bb: Rect, resolution: f32) -> Vec<(f32, f32)> {
-    assert!(!bb.is_null());
-    let width = bb.width();
-    let height = bb.height();
-    let start = bb.top_left;
-    let end = bb.bottom_right;
-    let start_x = start.x - width / 10.0 - resolution * 2.0;
-    let start_y = start.y - height / 10.0 - resolution * 2.0;
-    let end_x = end.x + width / 10.0 + resolution * 2.0;
-    let end_y = end.y + height / 10.0 + resolution * 2.0;
+pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32)> {
+    println!("resolution: {}", resolution);
+    let bb = shape.bounding_box().unwrap();
+    let b_dim = bb.width().max(bb.height());
+    let expand = b_dim * 0.10;
+    let bb = bb.expand(expand, expand, expand, expand);
 
-    let segments_x = (end_x - start_x) / resolution;
-    let segments_y = (end_y - start_y) / resolution;
-    let num_points = segments_x * segments_y;
+    assert!(!bb.is_null(), "shape is null");
+    let sample_dist = SampleDist {
+        x_bump: resolution,
+        y_bump: resolution,
+    };
+    let mut out = vec![];
 
-    let mut x = start_x;
-    let mut y = start_y;
-    let mut out = Vec::with_capacity(num_points.ceil() as usize);
+    fn subdivide<S: Implicit>(shape: &S, bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) {
+        let radius = bb.width().max(bb.height());
+        let sample = shape.sample(bb.midpoint()).abs();
 
-    while y < end_y {
-        while x < end_x {
-            out.push((x, y));
-            x += resolution;
+        if sample > radius {
+            return
         }
-        x = start_x;
-        y += resolution;
+        if  radius < sample_dist.max_bump() * 10.0 || radius < 1.0 {
+            sample_from_box(bb, sample_dist, out);
+            return;
+        }
+
+        let q = bb.split_quad();
+        subdivide(shape, q[0], sample_dist, out);
+        subdivide(shape, q[1], sample_dist, out);
+        subdivide(shape, q[2], sample_dist, out);
+        subdivide(shape, q[3], sample_dist, out);
     }
-    out
+
+    if shape.follows_rules() {
+        subdivide(shape, bb, sample_dist, &mut out);
+    } else {
+        sample_from_box(bb, sample_dist, &mut out);
+    }
+
+    out.sort_by(|a, b| {
+        match a.x.partial_cmp(&b.x) {
+            Some(a) => a,
+            None => Ordering::Equal
+        }
+    });
+    remove_similar(&mut out);
+
+    out.sort_by(|a, b| {
+        match a.y.partial_cmp(&b.y) {
+            Some(a) => a,
+            None => Ordering::Equal
+        }
+    });
+    remove_similar(&mut out);
+
+    // TODO: make this function return points
+    out.into_iter().map(|p| p.into_tuple()).collect()
+}
+
+fn remove_similar(out: &mut Vec<Point>) {
+    let mut last = None;
+    let mut to_remove: Vec<usize> = vec![];
+
+    for (i, &pt) in out.iter().enumerate() {
+        if last.is_none() {
+            last = Some(pt);
+            continue;
+        }
+        let last_u = last.unwrap();
+        if pt.close_to(&last_u, 0.01) {
+            to_remove.push(i);
+        } 
+        last = Some(pt);
+    }
+
+    to_remove.reverse();
+    println!("{:?}", to_remove);
+
+    let mut i = 0;
+    out.retain(|x| {
+        if to_remove.is_empty() {
+            return true;
+        }
+
+        let &last_idx = to_remove.last().unwrap();
+        let result = if last_idx == i {
+            to_remove.pop();
+            false
+        } else {
+            true
+        };
+
+        i += 1;
+        result
+    });
+
+}
+
+fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) {
+    sample_dist.modify_bb(&mut bb);
+    let Point{mut x, mut y} = bb.top_left();
+    let x_orig = x;
+
+    loop {
+        let p = Point{x: x, y: y};
+        if bb.contains(&p) {
+            out.push(p);
+            x = sample_dist.bump_x(x);
+        } else {
+            x = x_orig;
+            y = sample_dist.bump_y(y);
+            if !bb.contains(&Point{x: x, y: y}) { break; }
+        }
+    }
 }

@@ -296,10 +296,10 @@ impl Rect {
     }
 
     pub fn contains(&self, p: &Point) -> bool {
-        p.x > self.top_left.x &&
-        p.x < self.bottom_right.x &&
-        p.y > self.top_left.y &&
-        p.y < self.bottom_right.y
+        p.x >= self.top_left.x &&
+        p.x <= self.bottom_right.x &&
+        p.y >= self.top_left.y &&
+        p.y <= self.bottom_right.y
     }
 
     pub fn does_intersect(&self, other: &Rect) -> bool{
@@ -375,6 +375,11 @@ impl Rect {
                 &(self.top_left + half),
                 &half)
         ]
+    }
+
+    pub fn close_to(&self, other: &Rect, epsilon: f32) -> bool {
+        self.top_left.close_to(&other.top_left, epsilon) &&
+        self.bottom_right.close_to(&other.bottom_right, epsilon)
     }
 }
 
@@ -520,6 +525,8 @@ impl Matrix {
 }
 
 impl Point {
+    pub fn into_tuple(self) -> (f32, f32) { (self.x, self.y) }
+
     pub fn close_to(&self, other: &Point, epsilon: f32) -> bool {
         self.distance_2(other) < epsilon * epsilon
     }

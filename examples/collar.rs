@@ -6,16 +6,16 @@ mod helper;
 use implicit::*;
 use implicit::geom::*;
 
-const NECK_CIRC: f32 = 14.5;
-const FRONT_LEN: f32 = (3.0 / 4.0) * NECK_CIRC;
-const MAIN_HEIGHT: f32 = 1.0;
-const TRI_OFFSET: f32 = 0.5;
+const NECK_CIRC: f32 = 1450.0;
+const FRONT_LEN: f32 = (3.0 / 4.0) * NECK_CIRC * (1.0 / 2.0);
+const MAIN_HEIGHT: f32 = 100.0;
+const TRI_OFFSET: f32 = 50.0;
 
 // holes
-const HOLE_RADIUS: f32 = 0.125;
-const HOLE_SPACING: f32 = 0.25 + HOLE_RADIUS * 2.0;
-const HOLE_OFFSET: f32 = 0.5;
-const STITCH_OFFSET: f32 = 0.1;
+const HOLE_RADIUS: f32 = 12.5;
+const HOLE_SPACING: f32 = HOLE_RADIUS * 4.0;
+const HOLE_OFFSET: f32 = 50.0;
+const STITCH_OFFSET: f32 = 10.0;
 
 fn front_outline() -> PolyGroup {
     let main_front_rect = Rectangle::new(Rect::from_points(
@@ -33,7 +33,9 @@ fn front_outline() -> PolyGroup {
             Point { x: FRONT_LEN, y: MAIN_HEIGHT }].into_iter());
 
 
-    main_front_rect.or(left_triangle).or(right_triangle).fix_rules(0.01)
+    let result = main_front_rect.or(left_triangle).or(right_triangle);
+
+    result.fix_rules(2.25)
 }
 
 fn holes() -> Vec<Not<Circle>> {
@@ -60,7 +62,7 @@ fn holes() -> Vec<Not<Circle>> {
 }
 
 fn main() {
-    let front_outline = front_outline().smooth(0.2, 0.01);
+    let front_outline = front_outline().smooth(10.0, 5.0);
     let outline_stitch = front_outline.clone().shrink(STITCH_OFFSET);
 
     let mut targets: Vec<SyncBox> = holes().into_iter().map(|a| a.boxed()).collect();
@@ -68,8 +70,8 @@ fn main() {
 
     let front_collar = AndThese { targets: targets };
 
-    helper::display(vec![
-        (front_collar.scale(100.0, 100.0).translate(50.0, 350.0).boxed(),            helper::Display::Lines),
-        (front_outline.scale(100.0, 100.0).translate(50.0, 50.0).boxed(), helper::Display::Lines),
+    helper::display(5.0, vec![
+        (front_collar.clone().translate(50.0, 50.0).boxed(), helper::Display::Lines),
+        (front_collar.translate(50.0, 350.0).boxed(), helper::Display::Pixels),
     ]);
 }

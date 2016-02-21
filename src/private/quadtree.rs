@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::cmp::Ord;
 use super::geom::{Rect, Point, Line};
 
+const EPSILON: f32 = 0.001;
+
 pub trait Spatial {
     fn aabb(&self) -> Rect;
 }
@@ -11,6 +13,7 @@ pub struct ItemId(u32);
 
 #[derive(Debug, Clone)]
 struct QuadTreeConfig {
+    allow_duplicates: bool,
     max_children: usize,
     min_children: usize,
     max_depth: usize,
@@ -69,7 +72,7 @@ impl Clone for QuadNode {
 }
 
 impl <T> QuadTree<T> {
-    pub fn new(size: Rect, min_children: usize, max_children: usize, max_depth: usize) -> QuadTree<T> {
+    pub fn new(size: Rect, allow_duplicates: bool,  min_children: usize, max_children: usize, max_depth: usize) -> QuadTree<T> {
         QuadTree {
             root: QuadNode::Leaf {
                 aabb: size,
@@ -77,6 +80,7 @@ impl <T> QuadTree<T> {
                 depth: 0,
             },
             config: QuadTreeConfig {
+                allow_duplicates: allow_duplicates,
                 max_children: max_children,
                 min_children: min_children,
                 max_depth: max_depth,
@@ -87,7 +91,7 @@ impl <T> QuadTree<T> {
     }
 
     pub fn default(size: Rect) -> QuadTree<T> {
-        QuadTree::new(size, 4, 16, 8)
+        QuadTree::new(size, true, 4, 16, 8)
     }
 
     pub fn insert_with_box(&mut self, t: T, aabb: Rect) -> ItemId {
@@ -194,7 +198,12 @@ impl QuadNode {
         match self {
             &mut QuadNode::Branch { ref aabb, ref mut in_all, ref mut children, ref mut element_count, .. } => {
                 if item_aabb.contains(&aabb.midpoint()) {
-                    in_all.push((item_id, item_aabb));
+                    // Only insert if there isn't another item with a very similar aabb.
+                    if config.allow_duplicates || !in_all.iter().any(|&(_, ref e_bb)| e_bb.close_to(&item_aabb, EPSILON)) {
+                        in_all.push((item_id, item_aabb));
+                    } else {
+                        println!("rejected");
+                    }
                 } else {
                     for &mut (ref aabb, ref mut child) in children {
                         if aabb.does_intersect(&item_aabb) {
@@ -226,7 +235,11 @@ impl QuadNode {
                         depth: *depth
                     }));
                 } else {
-                    elements.push((item_id, item_aabb));
+                    if config.allow_duplicates || !elements.iter().any(|&(_, ref e_bb)| e_bb.close_to(&item_aabb, EPSILON)) {
+                        elements.push((item_id, item_aabb));
+                    } else {
+                        println!("rejected");
+                    }
                 }
             }
         }

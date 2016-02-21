@@ -208,10 +208,10 @@ fn join_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Lin
 
     let aabb = match aabb {
         Some(aabb) => aabb,
-        None => return (vec![], QuadTree::new(Rect::null(), 4, 16, 4))
+        None => return (vec![], QuadTree::new(Rect::null(), false, 4, 16, 4))
     };
 
-    let mut tree = QuadTree::new(aabb, 4, 16, 4);
+    let mut tree = QuadTree::new(aabb, false, 4, 16, 4);
     for line in lines {
         tree.insert(line);
     }

@@ -32,7 +32,7 @@ fn draw_rectangle(frame: &mut Frame, rect: &Rect, color: (f32, f32, f32)) {
 }
 
 fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
-    frame.text("[d]raw add_mode", 20.0, 20.0)
+    frame.text("[a] add_mode", 20.0, 20.0)
          .color(if add_mode == AddMode::Draw { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
          .draw().unwrap();
     frame.text("[q]uery add_mode", 20.0, 40.0)

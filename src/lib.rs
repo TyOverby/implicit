@@ -14,6 +14,7 @@ pub use private::quadtree::QuadTree;
 
 use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};
 use std::sync::Arc;
+use std::rc::Rc;
 
 // TODO: this should be unsized
 pub trait Implicit {
@@ -29,12 +30,12 @@ pub trait Implicit {
     /// If the shape is infinite, return None.
     fn bounding_box(&self) -> Option<Rect>;
 
-    fn boxed(self) -> SyncBox where Self: Sized + 'static + Sync {
-        SyncBox { inner: Box::new(self) }
-    }
-
     /// True if the shape follows all the rules about implicit shapes.
     fn follows_rules(&self) -> bool;
+
+    fn boxed(self) -> SyncBox where Self: Sized + 'static + Sync {
+        SyncBox { inner: Rc::new(self) }
+    }
 
     fn and<B: Implicit>(self, other: B) -> And<Self, B> where Self: Sized {
         And {
@@ -386,8 +387,9 @@ impl <'a, A> Implicit for &'a A where A: Implicit + Sized {
     }
 }
 
+#[derive(Clone)]
 pub struct SyncBox {
-    inner: Box<Implicit + Sync>
+    inner: Rc<Implicit + Sync>
 }
 
 impl Implicit for SyncBox {
