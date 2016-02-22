@@ -18,5 +18,5 @@ fn main() {
 
     let f = f.scale(100.0, 100.0);
 
-    helper::display(vec![(&f, helper::Display::Pixels)]);
+    helper::display(5.0, vec![(f.boxed(), helper::Display::Lines)]);
 }

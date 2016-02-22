@@ -232,7 +232,6 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
 }
 
 pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32)> {
-    println!("resolution: {}", resolution);
     let bb = shape.bounding_box().unwrap();
     let b_dim = bb.width().max(bb.height());
     let expand = b_dim * 0.10;
@@ -307,7 +306,6 @@ fn remove_similar(out: &mut Vec<Point>) {
     }
 
     to_remove.reverse();
-    println!("{:?}", to_remove);
 
     let mut i = 0;
     out.retain(|x| {

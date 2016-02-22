@@ -139,6 +139,16 @@ pub trait Implicit {
     fn smooth(self, amount: f32, resolution: f32) -> Boundary<PolyGroup> where Self: Sized + Sync {
         self.shrink(amount).fix_rules(resolution).grow(amount)
     }
+
+    fn center(&self) -> Option<Point> {
+        self.bounding_box().map(|a|Rect::midpoint(&a))
+    }
+
+    fn center_at(self, point: &Point) -> Transformation<Self> where Self: Sized {
+        let my_center = self.center().unwrap();
+        let delta = *point - my_center;
+        self.translate(delta.x, delta.y)
+    }
 }
 
 #[derive(Clone, Debug)]

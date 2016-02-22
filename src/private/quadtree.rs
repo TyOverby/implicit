@@ -123,7 +123,6 @@ impl <T> QuadTree<T> {
             let &(ref t, ref rect) = match self.elements.get(&id) {
                 Some(e) => e,
                 None => {
-                    println!("{:#?}", self);
                     panic!("looked for {:?}", id);
                 }
             };
@@ -201,9 +200,7 @@ impl QuadNode {
                     // Only insert if there isn't another item with a very similar aabb.
                     if config.allow_duplicates || !in_all.iter().any(|&(_, ref e_bb)| e_bb.close_to(&item_aabb, EPSILON)) {
                         in_all.push((item_id, item_aabb));
-                    } else {
-                        println!("rejected");
-                    }
+                    } 
                 } else {
                     for &mut (ref aabb, ref mut child) in children {
                         if aabb.does_intersect(&item_aabb) {
@@ -237,9 +234,7 @@ impl QuadNode {
                 } else {
                     if config.allow_duplicates || !elements.iter().any(|&(_, ref e_bb)| e_bb.close_to(&item_aabb, EPSILON)) {
                         elements.push((item_id, item_aabb));
-                    } else {
-                        println!("rejected");
-                    }
+                    } 
                 }
             }
         }
