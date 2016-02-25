@@ -1,7 +1,7 @@
 use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line};
 
 use ::Implicit;
-use std::cmp::{Ord, PartialOrd, Ordering};
+use std::cmp::{PartialOrd, Ordering};
 use crossbeam;
 use flame;
 
@@ -40,6 +40,11 @@ pub enum OutputMode {
     Outline(Vec<Vec<Point>>),
     DashedLine(Vec<DashedData>)
 }
+pub struct SegmentIter<'a> {
+    data: &'a DashedData,
+    last_segment_idx: usize,
+    last_points_pos: usize,
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct SampleDist {
@@ -50,12 +55,6 @@ pub struct SampleDist {
 pub struct DashedData {
     sizes: Vec<u32>,
     points: Vec<Point>
-}
-
-pub struct SegmentIter<'a> {
-    data: &'a DashedData,
-    last_segment_idx: usize,
-    last_points_pos: usize,
 }
 
 impl SampleDist {
@@ -95,7 +94,7 @@ impl <'a> Iterator for SegmentIter<'a> {
         if self.last_segment_idx >= self.data.sizes.len() {
             return None
         } 
-        let size_of_segment = self.data.sizes[self.last_segment_idx + 1];
+        let size_of_segment = self.data.sizes[self.last_segment_idx];
         let slice = &self.data.points[
             self.last_points_pos ..
             self.last_points_pos + size_of_segment as usize];
@@ -107,7 +106,7 @@ impl <'a> Iterator for SegmentIter<'a> {
 }
 
 impl DashedData {
-    fn segments(&self) -> SegmentIter {
+    pub fn segments(&self) -> SegmentIter {
         SegmentIter {
             data: self,
             last_segment_idx: 0,
@@ -131,7 +130,7 @@ fn circumfrence(pts: &[Point]) -> f32 {
     dist
 }
 
-fn transform(points: Vec<Vec<Point>>, mode: RenderMode) -> OutputMode {
+fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
     use super::{dashify, DashSegment};
     fn make_dash(pts: Vec<Point>, dash: &[f32]) -> DashedData {
         let dashed = dashify(pts.into_iter(), dash.iter().cloned());
@@ -141,18 +140,19 @@ fn transform(points: Vec<Vec<Point>>, mode: RenderMode) -> OutputMode {
             lengths.push(segment.len() as u32);
             pts.extend(segment);
         }
+
         DashedData { sizes: lengths, points: pts }
     }
 
     match mode {
-        RenderMode::Solid => OutputMode::Solid(points),
-        RenderMode::Outline => OutputMode::Outline(points),
-        RenderMode::BasicDashed(dash) => {
+        &RenderMode::Solid => OutputMode::Solid(points),
+        &RenderMode::Outline => OutputMode::Outline(points),
+        &RenderMode::BasicDashed(ref dash) => {
             OutputMode::DashedLine(points.into_iter()
                                          .map(|pts| make_dash(pts, &dash[..]))
                                          .collect())
         },
-        RenderMode::DashedRepeatingN(dash, n) => {
+        &RenderMode::DashedRepeatingN(ref dash, n) => {
             OutputMode::DashedLine(points.into_iter().map(|pts| {
                 let circ = circumfrence(&pts);
                 let dash_total = dash.iter().fold(0.0, |a, b| a + b);
@@ -165,13 +165,23 @@ fn transform(points: Vec<Vec<Point>>, mode: RenderMode) -> OutputMode {
                 make_dash(pts, &modified_dash[..])
             }).collect())
         },
-        RenderMode::DashedPerfect(dash) => {
-            unimplemented!();
+        &RenderMode::DashedPerfect(ref dash) => {
+            OutputMode::DashedLine(points.into_iter().map(|pts| {
+                let circ:f32 = circumfrence(&pts);
+                let dash_total = dash.iter().fold(0.0, |a, b| a + b);
+                let n: f32 = (circ / dash_total).round();
+                let size_of_one_repeat = circ / n;
+                let scale_factor = dash_total / size_of_one_repeat;
+                let modified_dash = dash.iter()
+                                        .map(|&l| l * scale_factor)
+                                        .collect::<Vec<_>>();
+                make_dash(pts, &modified_dash[..])
+            }).collect())
         }
     }
 }
 
-pub fn render<A>(object: A, rm: RenderMode, resolution: f32, simplify: bool) -> OutputMode
+pub fn render<A>(object: A, rm: &RenderMode, resolution: f32, simplify: bool) -> OutputMode
 where A: Implicit + Sync {
 
     const FACTOR: f32 = 1.0;
@@ -308,7 +318,7 @@ fn remove_similar(out: &mut Vec<Point>) {
     to_remove.reverse();
 
     let mut i = 0;
-    out.retain(|x| {
+    out.retain(|_| {
         if to_remove.is_empty() {
             return true;
         }

@@ -23,7 +23,7 @@ impl ImplicitCanvas {
     }
 
     fn render_lines(&self, shape: &SyncBox, frame: &mut Frame) {
-        let paths = render(shape, RenderMode::Outline, self.resolution, true);
+        let paths = render(shape, &RenderMode::Outline, self.resolution, true);
         //          let colors = vec![lux::color::BLACK, lux::color::BLUE, lux::color::GREEN, lux::color::YELLOW, lux::color::BLACK, lux::color::RED];
         let colors = vec![lux::color::BLACK];
         let mut colors = colors.iter().cloned().cycle();

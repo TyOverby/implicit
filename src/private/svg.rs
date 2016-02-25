@@ -1,3 +1,4 @@
+/*
 use super::*;
 use ::Implicit;
 use ::std::io::Write;
@@ -13,7 +14,6 @@ pub fn svg_footer<W: Write>(w: &mut W) -> IoResult<()> {
     writeln!(w, "</svg>")
 }
 
-/*
 pub fn export_svg<'a, S: 'a, I>(objects: I, resolution: f32, simplify: bool, width: f32, height: f32, units: &str) -> String
 where S: Implicit, I: Iterator<Item=&'a S> {
     let rendered = objects.map(|obj| render(obj, resolution, simplify));

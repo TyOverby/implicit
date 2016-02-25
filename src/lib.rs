@@ -7,16 +7,18 @@ extern crate crossbeam;
 extern crate flame;
 
 mod private;
+mod scene;
 
 pub use private::render::{render, sampling_points, RenderMode, OutputMode};
 pub use private::geom;
 pub use private::quadtree::QuadTree;
+pub use private::output_device::OutputDevice;
+pub use scene::Scene;
+
 
 use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};
-use std::sync::Arc;
 use std::rc::Rc;
 
-// TODO: this should be unsized
 pub trait Implicit {
     /// Returns the distance from a point to the nearest edge of a surface.
     ///
@@ -124,7 +126,7 @@ pub trait Implicit {
     }
 
     fn fix_rules(self, resolution: f32) -> PolyGroup where Self: Sized + Sync {
-        let rendered = render(self, RenderMode::Outline, resolution, true);
+        let rendered = render(self, &RenderMode::Outline, resolution, true);
         let lines = if let OutputMode::Outline(lines) = rendered {
             lines
         } else {
@@ -150,6 +152,10 @@ pub trait Implicit {
         self.translate(delta.x, delta.y)
     }
 }
+
+pub trait SyncImplicit: Sync + Implicit { }
+
+impl <A> SyncImplicit for A where A: Implicit + Sync {}
 
 #[derive(Clone, Debug)]
 pub struct PolyGroup {

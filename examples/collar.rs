@@ -2,9 +2,11 @@ extern crate lux;
 extern crate implicit;
 
 mod helper;
+mod display;
 
 use implicit::*;
 use implicit::geom::*;
+use display::display;
 
 // BASE
 const NECK_CIRC: f32 = 1450.0;
@@ -94,7 +96,6 @@ fn center() -> PolyGroup {
 
 fn front() -> AndThese<SyncBox> {
     let front_outline = front_outline(); //.smooth(10.0, 5.0);
-    let outline_stitch = front_outline.clone().shrink(STITCH_OFFSET);
     let center = center();
     let center = center.center_at(&front_outline.center().unwrap());
     let center = center.translate(0.0, CENTER_SHIFT_DOWN);
@@ -121,8 +122,21 @@ fn back() -> SyncBox  {
 
 fn main() {
     let front_collar = front();
+    let front_collar_outline = front_collar.clone().shrink(STITCH_OFFSET);
     let back_collar = back();
+    let back_collar_outline = back_collar.clone().shrink(STITCH_OFFSET);
 
+    let mut scene = Scene::new();
+
+    scene.add_shape(front_collar.translate(50.0, 50.0).boxed(), RenderMode::Outline);
+    scene.add_shape(front_collar_outline.translate(50.0, 50.0).boxed(), RenderMode::DashedPerfect(vec![10.0, 5.0]));
+
+    scene.add_shape(back_collar.translate(50.0, 250.0).boxed(), RenderMode::Outline);
+    scene.add_shape(back_collar_outline.translate(50.0, 250.0).boxed(), RenderMode::DashedPerfect(vec![10.0, 5.0]));
+
+    display(scene);
+
+    /*
     helper::display(5.0, vec![
         (front_collar.clone().translate(50.0, 50.0).boxed(), helper::Display::Lines),
         (back_collar.clone().translate(50.0, 350.0).boxed(), helper::Display::Lines),
@@ -130,5 +144,5 @@ fn main() {
         (front_collar.translate(50.0, 700.0).boxed(), helper::Display::Pixels),
         (back_collar.translate(50.0, 1050.0).boxed(), helper::Display::Pixels),
         */
-    ]);
+    ]);*/
 }

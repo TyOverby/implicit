@@ -14,6 +14,9 @@ where P: Iterator<Item=Point>, D: Iterator<Item=f32> + Clone {
     let mut dst = dashes.next().unwrap();
 
     let mut seg = vec![];
+    if let Some(p) = previous {
+        seg.push(p);
+    }
 
     while let (Some(prev), Some(next)) = (previous, points.next()) {
         let prev_to_next = next - prev;
@@ -28,6 +31,7 @@ where P: Iterator<Item=Point>, D: Iterator<Item=f32> + Clone {
                 on = false;
             } else {
                 on = true;
+                seg.push(next_break);
             }
 
             previous = Some(next_break);
