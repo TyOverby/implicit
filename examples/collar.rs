@@ -134,7 +134,14 @@ fn main() {
     scene.add_shape(back_collar.translate(50.0, 250.0).boxed(), RenderMode::Outline);
     scene.add_shape(back_collar_outline.translate(50.0, 250.0).boxed(), RenderMode::DashedPerfect(vec![10.0, 5.0]));
 
-    display(scene);
+    let mut svg = SvgWriter::new(15.0, 15.0, "in", 1.0 / 10.0);
+    scene.render_all(&mut svg);
+    svg.write_out("collar.svg");
+
+    let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
+    scene.render_all(&mut pdf);
+    pdf.write_out("collar.pdf");
+//    display(scene);
 
     /*
     helper::display(5.0, vec![

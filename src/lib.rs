@@ -14,6 +14,8 @@ pub use private::geom;
 pub use private::quadtree::QuadTree;
 pub use private::output_device::OutputDevice;
 pub use scene::Scene;
+pub use private::svg::SvgWriter;
+pub use private::pdf::PdfWriter;
 
 
 use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};

@@ -1,5 +1,5 @@
 use ::{OutputMode, RenderMode, SyncBox, SyncImplicit, Implicit, render, OutputDevice};
-use ::geom::Point;
+use ::geom::{Point, Rect};
 
 pub struct Scene {
     shapes: Vec<(SyncBox, RenderMode)>,
@@ -19,7 +19,9 @@ impl  Scene {
     }
 
     pub fn render_all<O: OutputDevice>(&self, out: &mut O) {
+        let mut total_bounding_box = Rect::null_at(&Point{x: 0.0, y: 0.0});
         for &(ref shape, ref mode) in self.shapes.iter() {
+            total_bounding_box = total_bounding_box.union_with(&shape.bounding_box().unwrap());
             match render(shape, mode, self.resolution, true) {
                 OutputMode::Solid(_) => unimplemented!(),
                 OutputMode::Outline(lines) => {
@@ -46,5 +48,6 @@ impl  Scene {
                 }
             }
         }
+        out.set_size(total_bounding_box.width(), total_bounding_box.height());
     }
 }
