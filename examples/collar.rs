@@ -129,10 +129,10 @@ fn main() {
     let mut scene = Scene::new();
 
     scene.add_shape(front_collar.translate(50.0, 50.0).boxed(), RenderMode::Outline);
-    scene.add_shape(front_collar_outline.translate(50.0, 50.0).boxed(), RenderMode::DashedPerfect(vec![10.0, 5.0]));
+    scene.add_shape(front_collar_outline.translate(50.0, 50.0).boxed(), RenderMode::DashedPerfect(vec![5.0, 5.0]));
 
     scene.add_shape(back_collar.translate(50.0, 250.0).boxed(), RenderMode::Outline);
-    scene.add_shape(back_collar_outline.translate(50.0, 250.0).boxed(), RenderMode::DashedPerfect(vec![10.0, 5.0]));
+    scene.add_shape(back_collar_outline.translate(50.0, 250.0).boxed(), RenderMode::DashedPerfect(vec![5.0, 5.0]));
 
     let mut svg = SvgWriter::new(15.0, 15.0, "in", 1.0 / 10.0);
     scene.render_all(&mut svg);

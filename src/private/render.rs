@@ -167,13 +167,23 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
         },
         &RenderMode::DashedPerfect(ref dash) => {
             OutputMode::DashedLine(points.into_iter().map(|pts| {
-                let circ:f32 = circumfrence(&pts);
+                let circ: f32 = circumfrence(&pts);
                 let dash_total = dash.iter().fold(0.0, |a, b| a + b);
-                let n: f32 = (circ / dash_total).round();
-                let size_of_one_repeat = circ / n;
-                let scale_factor = dash_total / size_of_one_repeat;
+                println!("circ: {}", circ);
+                println!("dash total: {}", dash_total);
+
+                // If (circ / dash_total) is a whole number, then it's a perfect loop
+                // so scale factor is 1. It probably isn't, so lets round.
+                let dash_ratio = circ / dash_total;
+                println!("dash ratio: {}", dash_ratio);
+
+                let r = (dash_ratio).round();
+                println!("rounded: {}", r);
+
+                let s = (circ / r) / dash_total;
+
                 let modified_dash = dash.iter()
-                                        .map(|&l| l * scale_factor)
+                                        .map(|&l| l * s)
                                         .collect::<Vec<_>>();
                 make_dash(pts, &modified_dash[..])
             }).collect())
@@ -303,6 +313,7 @@ fn remove_similar(out: &mut Vec<Point>) {
     let mut last = None;
     let mut to_remove: Vec<usize> = vec![];
 
+    // Build up a list of indices to remove.
     for (i, &pt) in out.iter().enumerate() {
         if last.is_none() {
             last = Some(pt);
@@ -315,8 +326,10 @@ fn remove_similar(out: &mut Vec<Point>) {
         last = Some(pt);
     }
 
+    // Reverse the list so that we can "pop" from the front
     to_remove.reverse();
 
+    // Drop all the removed indicies
     let mut i = 0;
     out.retain(|_| {
         if to_remove.is_empty() {
@@ -334,7 +347,6 @@ fn remove_similar(out: &mut Vec<Point>) {
         i += 1;
         result
     });
-
 }
 
 fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) {
