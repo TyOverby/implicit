@@ -2,6 +2,7 @@ use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line}
 
 use ::Implicit;
 use std::cmp::{PartialOrd, Ordering};
+use itertools::Itertools;
 use crossbeam;
 use flame;
 
@@ -134,7 +135,16 @@ fn circumfrence(pts: &[Point]) -> f32 {
 
 fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
     use super::{dashify, DashSegment};
-    fn make_dash(pts: Vec<Point>, dash: &[f32]) -> DashedData {
+    fn make_dash(mut pts: Vec<Point>, dash: &[f32]) -> DashedData {
+        let (min, _) = pts.iter().cloned().enumerate().fold1(|(pi, Point {x: px, y: py}), (ni, Point{x: nx, y: ny})| {
+            if (px + py) < (nx + ny) {
+                (pi, Point { x: px, y: py })
+            } else {
+                (ni, Point { x: nx, y: ny })
+            }
+        }).unwrap();
+        rotate(&mut pts, min);
+
         let dashed = dashify(pts.into_iter(), dash.iter().cloned());
         let mut lengths = Vec::with_capacity(dashed.len());
         let mut pts = vec![];
@@ -361,4 +371,14 @@ fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) 
             if !bb.contains(&Point{x: x, y: y}) { break; }
         }
     }
+}
+
+fn rotate<T>(slice: &mut [T], point: usize) {
+    {
+        let (a, b) = slice.split_at_mut(point);
+        a.reverse();
+        b.reverse();
+    }
+
+    slice.reverse();
 }
