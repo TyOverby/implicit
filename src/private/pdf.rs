@@ -9,7 +9,7 @@ pub struct PdfWriter {
 }
 
 impl PdfWriter {
-    pub fn new(units: &str, conversion_factor: f32) -> PdfWriter {
+    pub fn new(_units: &str, conversion_factor: f32) -> PdfWriter {
         PdfWriter {
             size: (800.0, 800.0),
             buffer: String::new(),

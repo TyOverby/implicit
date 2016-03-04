@@ -2,11 +2,9 @@ extern crate lux;
 extern crate implicit;
 
 mod helper;
-mod display;
 
 use implicit::*;
 use implicit::geom::*;
-use display::display;
 
 // BASE
 const NECK_CIRC: f32 = 1450.0;
@@ -30,6 +28,11 @@ const NUM_HOLES: i32 = 5;
 const CENTER_LEN: f32 = FRONT_LEN * (1.0 / 3.0);
 const CENTER_HEIGHT: f32 = MAIN_HEIGHT * (1.0 + 1.0 / 4.0);
 const CENTER_SHIFT_DOWN: f32 = MAIN_HEIGHT * (1.0 / 4.0);
+
+// Hook Attach
+const HOOK_CHUNK_HEIGHT: f32 = (CENTER_HEIGHT + CENTER_SHIFT_DOWN) / 4.0;
+const HOOK_TOTAL_LEN: f32 = 300.0;
+const HOOK_MIDDLE_LEN: f32 = 100.0;
 
 fn front_outline() -> PolyGroup {
     let main_front_rect = Rectangle::new(Rect::from_points(
@@ -98,7 +101,7 @@ fn front() -> AndThese<SyncBox> {
     let front_outline = front_outline(); //.smooth(10.0, 5.0);
     let center = center();
     let center = center.center_at(&front_outline.center().unwrap());
-    let center = center.translate(0.0, CENTER_SHIFT_DOWN);
+//    let center = center.translate(0.0, CENTER_SHIFT_DOWN);
     let front_collar = front_outline.or(center);//.smooth(20.0, 5.0);
 
     let mut targets: Vec<SyncBox> = holes().into_iter().map(|a| a.boxed()).collect();
@@ -119,6 +122,26 @@ fn back() -> SyncBox  {
     back_collar.boxed()
 }
 
+fn hook_attach(middle_height: f32) -> Or<Or<Rectangle, Rectangle>, Rectangle> {
+    let mid = Rectangle::new(Rect::from_point_and_size(
+            &Point{x: (HOOK_TOTAL_LEN - HOOK_MIDDLE_LEN) / 2.0, y: HOOK_CHUNK_HEIGHT},
+            &Vector{x: HOOK_MIDDLE_LEN, y: middle_height}));
+
+    hook_attach_stitch(middle_height).or(mid)
+}
+
+fn hook_attach_stitch(middle_height: f32) -> Or<Rectangle, Rectangle> {
+    let top = Rectangle::new(Rect::from_point_and_size(
+            &Point{x: 0.0, y: 0.0},
+            &Vector{x: HOOK_TOTAL_LEN, y: HOOK_CHUNK_HEIGHT}));
+
+    let bot = Rectangle::new(Rect::from_point_and_size(
+            &Point{x: 0.0, y: middle_height + HOOK_CHUNK_HEIGHT},
+            &Vector{x: HOOK_TOTAL_LEN, y: HOOK_CHUNK_HEIGHT}));
+
+    top.or(bot)
+}
+
 
 fn main() {
     let front_collar = front();
@@ -126,30 +149,23 @@ fn main() {
     let back_collar = back();
     let back_collar_outline = back_collar.clone().shrink(STITCH_OFFSET);
 
+    let hook_attach = hook_attach(CENTER_HEIGHT / 3.0);
+    let hook_attach = hook_attach.center_at(&front_collar.center().unwrap());
+    let hook_attach_stitch = hook_attach_stitch(CENTER_HEIGHT / 3.0).shrink(STITCH_OFFSET);
+    let hook_attach_stitch = hook_attach_stitch.center_at(&front_collar.center().unwrap());
+
     let mut scene = Scene::new();
 
-    scene.add_shape(front_collar.translate(50.0, 50.0).boxed(), RenderMode::Outline);
-    scene.add_shape(front_collar_outline.translate(50.0, 50.0).boxed(), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_shape(&front_collar, (50.0, 50.0), RenderMode::Outline);
+    scene.add_shape(&front_collar_outline, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
 
-    scene.add_shape(back_collar.translate(50.0, 250.0).boxed(), RenderMode::Outline);
-    scene.add_shape(back_collar_outline.translate(50.0, 250.0).boxed(), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_shape(&back_collar, (50.0, 250.0), RenderMode::Outline);
+    scene.add_shape(&back_collar_outline, (50.0, 250.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
 
-    let mut svg = SvgWriter::new(15.0, 15.0, "in", 1.0 / 10.0);
-    scene.render_all(&mut svg);
-    svg.write_out("collar.svg");
+    scene.add_shape(&hook_attach_stitch, (50.0, 450.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_shape(&hook_attach_stitch, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
 
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);
     pdf.write_out("collar.pdf");
-//    display(scene);
-
-    /*
-    helper::display(5.0, vec![
-        (front_collar.clone().translate(50.0, 50.0).boxed(), helper::Display::Lines),
-        (back_collar.clone().translate(50.0, 350.0).boxed(), helper::Display::Lines),
-        /*
-        (front_collar.translate(50.0, 700.0).boxed(), helper::Display::Pixels),
-        (back_collar.translate(50.0, 1050.0).boxed(), helper::Display::Pixels),
-        */
-    ]);*/
 }

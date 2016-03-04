@@ -35,6 +35,7 @@ pub enum RenderMode {
     DashedPerfect(Vec<f32>)
 }
 
+#[derive(Clone)]
 pub enum OutputMode {
     Solid(Vec<Vec<Point>>),
     Outline(Vec<Vec<Point>>),
@@ -52,6 +53,7 @@ pub struct SampleDist {
     pub y_bump: f32,
 }
 
+#[derive(Clone)]
 pub struct DashedData {
     sizes: Vec<u32>,
     points: Vec<Point>
@@ -169,17 +171,11 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
             OutputMode::DashedLine(points.into_iter().map(|pts| {
                 let circ: f32 = circumfrence(&pts);
                 let dash_total = dash.iter().fold(0.0, |a, b| a + b);
-                println!("circ: {}", circ);
-                println!("dash total: {}", dash_total);
 
                 // If (circ / dash_total) is a whole number, then it's a perfect loop
                 // so scale factor is 1. It probably isn't, so lets round.
                 let dash_ratio = circ / dash_total;
-                println!("dash ratio: {}", dash_ratio);
-
                 let r = (dash_ratio).round();
-                println!("rounded: {}", r);
-
                 let s = (circ / r) / dash_total;
 
                 let modified_dash = dash.iter()
