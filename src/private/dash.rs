@@ -11,7 +11,7 @@ where P: Iterator<Item=Point>, D: Iterator<Item=f32> + Clone {
 
     let mut on = true;
     let mut previous = points.next();
-    let mut dst = dashes.next().unwrap();
+    let mut dst = dashes.next().expect("dashes is empty");
 
     let mut seg = vec![];
     if let Some(p) = previous {

@@ -2,12 +2,12 @@ use ::{OutputMode, RenderMode, SyncImplicit, Implicit, render, OutputDevice};
 use ::geom::{Point, Rect};
 
 pub struct Scene {
-    shapes: Vec<((f32, f32), OutputMode)>,
+    shapes: Vec<(Rect, (f32, f32), OutputMode)>,
     pub resolution: f32,
     total_bounding_box: Rect,
 }
 
-impl  Scene {
+impl Scene {
     pub fn new() -> Scene {
         Scene {
             shapes: Vec::new(),
@@ -18,19 +18,23 @@ impl  Scene {
 
     pub fn add_shape<I: SyncImplicit>(&mut self, shape: &I, offset: (f32, f32), rendermode: RenderMode) -> usize {
         let i = self.shapes.len();
-        self.total_bounding_box = self.total_bounding_box.union_with(&shape.bounding_box().unwrap());
-        self.shapes.push((offset, render(shape, &rendermode, self.resolution, true)));
+        let new_bb = shape.bounding_box().unwrap().expand(-offset.0, -offset.1, offset.0, offset.1);
+        self.total_bounding_box = self.total_bounding_box.union_with(&new_bb);
+        self.shapes.push((shape.bounding_box().unwrap(), offset, render(shape, &rendermode, self.resolution, true)));
         i
     }
 
     pub fn add_again(&mut self, again: usize, offset: (f32, f32)) {
         let mut old = self.shapes[again].clone();
-        old.0 = offset;
+        old.1 = offset;
+        old.0 = old.0.expand(-offset.0, -offset.1, offset.0, offset.1);
+        self.total_bounding_box = self.total_bounding_box.union_with(&old.0);
         self.shapes.push(old);
     }
 
     pub fn render_all<O: OutputDevice>(&self, out: &mut O) {
-        for &((ox, oy), ref rendered) in &self.shapes {
+        out.set_size(self.total_bounding_box.width(), self.total_bounding_box.height());
+        for &(_, (ox, oy), ref rendered) in &self.shapes {
             match rendered {
                 &OutputMode::Solid(_) => unimplemented!(),
                 &OutputMode::Outline(ref lines) => {
@@ -57,6 +61,5 @@ impl  Scene {
                 }
             }
         }
-        out.set_size(self.total_bounding_box.width(), self.total_bounding_box.height());
     }
 }

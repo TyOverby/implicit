@@ -63,13 +63,20 @@ startxref
     }
 }
 
+impl PdfWriter {
+    fn transform_point(&self, x: f32, y: f32) -> (f32, f32) {
+        (x * self.conversion, self.size.1 - y * self.conversion)
+    }
+}
+
 impl OutputDevice for PdfWriter {
     fn start_line(&mut self) {
         self.start = true;
     }
 
     fn add_point(&mut self, x: f32, y: f32) {
-        self.line_buffer.push_str(&format!("{} {} {}\n", x * self.conversion, y * self.conversion, if self.start { "m" } else { "l" }));
+        let (x, y) = self.transform_point(x, y);
+        self.line_buffer.push_str(&format!("{} {} {}\n", x, y, if self.start { "m" } else { "l" }));
         self.start = false;
     }
 

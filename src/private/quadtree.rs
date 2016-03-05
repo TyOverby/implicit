@@ -1,6 +1,10 @@
 use std::collections::HashMap;
+use std::hash::BuildHasherDefault;
+use fnv::FnvHasher;
 use std::cmp::Ord;
 use super::geom::{Rect, Point, Line};
+
+type FnvHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher>>;
 
 const EPSILON: f32 = 0.001;
 
@@ -24,7 +28,7 @@ pub struct QuadTree<T> {
     root: QuadNode,
     config: QuadTreeConfig,
     id: u32,
-    elements: HashMap<ItemId, (T, Rect)>
+    elements: FnvHashMap<ItemId, (T, Rect)>
 }
 
 #[derive(Debug)]
@@ -86,7 +90,7 @@ impl <T> QuadTree<T> {
                 max_depth: max_depth,
             },
             id: 0,
-            elements: HashMap::with_capacity(max_children * 16)
+            elements: HashMap::with_capacity_and_hasher(max_children * 16, Default::default())
         }
     }
 

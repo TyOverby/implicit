@@ -5,6 +5,7 @@ extern crate rand;
 extern crate itertools;
 extern crate crossbeam;
 extern crate flame;
+extern crate fnv;
 
 mod private;
 mod scene;

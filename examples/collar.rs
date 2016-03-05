@@ -2,9 +2,11 @@ extern crate lux;
 extern crate implicit;
 
 mod helper;
+mod display;
 
 use implicit::*;
 use implicit::geom::*;
+use display::display;
 
 // BASE
 const NECK_CIRC: f32 = 1450.0;
@@ -101,14 +103,13 @@ fn front() -> AndThese<SyncBox> {
     let front_outline = front_outline(); //.smooth(10.0, 5.0);
     let center = center();
     let center = center.center_at(&front_outline.center().unwrap());
-//    let center = center.translate(0.0, CENTER_SHIFT_DOWN);
+    let center = center.translate(0.0, CENTER_SHIFT_DOWN);
     let front_collar = front_outline.or(center);//.smooth(20.0, 5.0);
 
     let mut targets: Vec<SyncBox> = holes().into_iter().map(|a| a.boxed()).collect();
     targets.push(front_collar.clone().boxed());
 
-    let front_collar = AndThese { targets: targets };
-    front_collar
+    AndThese { targets: targets }
 }
 
 fn back() -> SyncBox  {
@@ -149,21 +150,33 @@ fn main() {
     let back_collar = back();
     let back_collar_outline = back_collar.clone().shrink(STITCH_OFFSET);
 
-    let hook_attach = hook_attach(CENTER_HEIGHT / 3.0);
-    let hook_attach = hook_attach.center_at(&front_collar.center().unwrap());
-    let hook_attach_stitch = hook_attach_stitch(CENTER_HEIGHT / 3.0).shrink(STITCH_OFFSET);
-    let hook_attach_stitch = hook_attach_stitch.center_at(&front_collar.center().unwrap());
+    let hook_attach_stitched = hook_attach_stitch(CENTER_HEIGHT / 3.0).shrink(STITCH_OFFSET);
+    let hook_attach_stitched = hook_attach_stitched.center_at(&front_collar.center().unwrap());
 
     let mut scene = Scene::new();
+    scene.resolution = 0.5;
 
-    scene.add_shape(&front_collar, (50.0, 50.0), RenderMode::Outline);
-    scene.add_shape(&front_collar_outline, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    let f_c = scene.add_shape(&front_collar, (50.0, 50.0), RenderMode::Outline);
+    let f_o = scene.add_shape(&front_collar_outline, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_shape(&hook_attach_stitched, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
 
-    scene.add_shape(&back_collar, (50.0, 250.0), RenderMode::Outline);
-    scene.add_shape(&back_collar_outline, (50.0, 250.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_again(f_c, (50.0, 250.0));
+    scene.add_again(f_o, (50.0, 250.0));
 
-    scene.add_shape(&hook_attach_stitch, (50.0, 450.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
-    scene.add_shape(&hook_attach_stitch, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    let b_c = scene.add_shape(&back_collar, (50.0, 450.0), RenderMode::Outline);
+    let b_o = scene.add_shape(&back_collar_outline, (50.0, 450.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_shape(&hook_attach_stitched, (50.0, 450.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+
+    scene.add_again(b_c, (50.0, 650.0));
+    scene.add_again(b_o, (50.0, 650.0));
+
+    let hook_attach = hook_attach(CENTER_HEIGHT / 3.0);
+    let hook_attach_stitch = hook_attach_stitch(CENTER_HEIGHT / 3.0).shrink(STITCH_OFFSET);
+
+    let h_a = scene.add_shape(&hook_attach, (50.0, 850.0), RenderMode::Outline);
+    let h_a_s = scene.add_shape(&hook_attach_stitch, (50.0, 850.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    scene.add_again(h_a, (500.0, 850.0));
+    scene.add_again(h_a_s, (500.0, 850.0));
 
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);

@@ -136,14 +136,18 @@ fn circumfrence(pts: &[Point]) -> f32 {
 fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
     use super::{dashify, DashSegment};
     fn make_dash(mut pts: Vec<Point>, dash: &[f32]) -> DashedData {
-        let (min, _) = pts.iter().cloned().enumerate().fold1(|(pi, Point {x: px, y: py}), (ni, Point{x: nx, y: ny})| {
-            if (px + py) < (nx + ny) {
-                (pi, Point { x: px, y: py })
+        let (min, _) = pts.iter().cloned().enumerate().fold1(|(pi, pp), (ni, np)| {
+            const REALLY_FAR_AWAY: Point = Point{x: -100000.0, y: -1000000.0};
+            if pp.distance_2(&REALLY_FAR_AWAY) < np.distance_2(&REALLY_FAR_AWAY) {
+                (pi, pp)
             } else {
-                (ni, Point { x: nx, y: ny })
+                (ni, np)
             }
         }).unwrap();
-        rotate(&mut pts, min);
+
+        rotate_and_correct(&mut pts, min + 1);
+        let first = *pts.first().unwrap();
+        pts.push(first);
 
         let dashed = dashify(pts.into_iter(), dash.iter().cloned());
         let mut lengths = Vec::with_capacity(dashed.len());
@@ -373,12 +377,25 @@ fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) 
     }
 }
 
-fn rotate<T>(slice: &mut [T], point: usize) {
+fn rotate_and_correct(slice: &mut [Point], point: usize) {
+    fn is_clockwise(points: &[Point]) -> bool {
+        let mut total = 0.0;
+        for slice in points.windows(2) {
+            let a = slice[0];
+            let b = slice[1];
+            total += (b.x - a.x) * (b.y + a.y);
+        }
+        total > 0.0
+    }
+
     {
         let (a, b) = slice.split_at_mut(point);
         a.reverse();
         b.reverse();
     }
 
-    slice.reverse();
+    if !is_clockwise(slice) {
+        slice.reverse();
+    }
 }
+
