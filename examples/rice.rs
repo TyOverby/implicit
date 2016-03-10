@@ -47,8 +47,7 @@ fn main() {
                             .or(wire_3.outline_inner(wire_size))
                             .or(wire_4.outline_inner(wire_size))
                             .or(center.outline_inner(wire_size));
-    let f = GenericShape::Boxed(Box::new(finished));
-    let f = f.scale(100.0, 100.0);
+    let f = finished.scale(100.0, 100.0).boxed();
 
-    helper::display(vec![(&f, helper::Display::Lines)]);
+    helper::display(5.0, vec![(f, helper::Display::Lines)]);
 }

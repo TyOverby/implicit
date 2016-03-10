@@ -32,6 +32,7 @@ fn draw_rectangle(frame: &mut Frame, rect: &Rect, color: (f32, f32, f32)) {
 }
 
 fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
+    /*
     frame.text("[a] add_mode", 20.0, 20.0)
          .color(if add_mode == AddMode::Draw { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
          .draw().unwrap();
@@ -47,6 +48,7 @@ fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
     frame.text("[t]ree query", 20.0, 100.0)
          .color(if query_mode == QueryMode::Tree { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })
          .draw().unwrap();
+     */
 }
 
 fn draw_tree_query(quadtree: &QuadTree<Rect>, query: Option<&Rect>, frame: &mut Frame) {
@@ -94,7 +96,7 @@ fn main() {
 
     let mut last_down_position = None;
     let mut rects = vec![];
-    let mut quadtree = QuadTree::new(size, 1, 4, 8);
+    let mut quadtree = QuadTree::new(size, true, 1, 4, 8);
     let mut add_mode = AddMode::Draw;
     let mut query_mode = QueryMode::List;
     let mut query = None;

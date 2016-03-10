@@ -6,7 +6,9 @@ mod display;
 
 use implicit::*;
 use implicit::geom::*;
-use display::display;
+
+// ALL
+const DASH_SIZE: f32 = 5.0;
 
 // BASE
 const NECK_CIRC: f32 = 1450.0;
@@ -34,7 +36,9 @@ const CENTER_SHIFT_DOWN: f32 = MAIN_HEIGHT * (1.0 / 4.0);
 // Hook Attach
 const HOOK_CHUNK_HEIGHT: f32 = (CENTER_HEIGHT + CENTER_SHIFT_DOWN) / 4.0;
 const HOOK_TOTAL_LEN: f32 = 300.0;
-const HOOK_MIDDLE_LEN: f32 = 100.0;
+const HOOK_MIDDLE_LEN: f32 = 128.0;
+const HOOK_ATTACH_SPACING: f32 = 51.5;
+const HOOK_BASE_SPACING: f32 = 20.0;
 
 fn front_outline() -> PolyGroup {
     let main_front_rect = Rectangle::new(Rect::from_points(
@@ -150,31 +154,31 @@ fn main() {
     let back_collar = back();
     let back_collar_outline = back_collar.clone().shrink(STITCH_OFFSET);
 
-    let hook_attach_stitched = hook_attach_stitch(CENTER_HEIGHT / 3.0).shrink(STITCH_OFFSET);
+    let hook_attach_stitched = hook_attach_stitch(HOOK_BASE_SPACING).shrink(STITCH_OFFSET);
     let hook_attach_stitched = hook_attach_stitched.center_at(&front_collar.center().unwrap());
 
     let mut scene = Scene::new();
     scene.resolution = 0.5;
 
     let f_c = scene.add_shape(&front_collar, (50.0, 50.0), RenderMode::Outline);
-    let f_o = scene.add_shape(&front_collar_outline, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
-    scene.add_shape(&hook_attach_stitched, (50.0, 50.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    let f_o = scene.add_shape(&front_collar_outline, (50.0, 50.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
+    scene.add_shape(&hook_attach_stitched, (50.0, 50.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
 
     scene.add_again(f_c, (50.0, 250.0));
     scene.add_again(f_o, (50.0, 250.0));
 
     let b_c = scene.add_shape(&back_collar, (50.0, 450.0), RenderMode::Outline);
-    let b_o = scene.add_shape(&back_collar_outline, (50.0, 450.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
-    scene.add_shape(&hook_attach_stitched, (50.0, 450.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    let b_o = scene.add_shape(&back_collar_outline, (50.0, 450.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
+    scene.add_shape(&hook_attach_stitched, (50.0, 450.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
 
     scene.add_again(b_c, (50.0, 650.0));
     scene.add_again(b_o, (50.0, 650.0));
 
-    let hook_attach = hook_attach(CENTER_HEIGHT / 3.0);
-    let hook_attach_stitch = hook_attach_stitch(CENTER_HEIGHT / 3.0).shrink(STITCH_OFFSET);
+    let hook_attach = hook_attach(HOOK_ATTACH_SPACING);
+    let hook_attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
 
     let h_a = scene.add_shape(&hook_attach, (50.0, 850.0), RenderMode::Outline);
-    let h_a_s = scene.add_shape(&hook_attach_stitch, (50.0, 850.0), RenderMode::DashedPerfect(vec![5.0, 5.0]));
+    let h_a_s = scene.add_shape(&hook_attach_stitch, (50.0, 850.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
     scene.add_again(h_a, (500.0, 850.0));
     scene.add_again(h_a_s, (500.0, 850.0));
 

@@ -136,7 +136,11 @@ fn circumfrence(pts: &[Point]) -> f32 {
 fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
     use super::{dashify, DashSegment};
     fn make_dash(mut pts: Vec<Point>, dash: &[f32]) -> DashedData {
-        let (min, _) = pts.iter().cloned().enumerate().fold1(|(pi, pp), (ni, np)| {
+        // Make all of the points go clockwise
+        correct_spin(&mut pts);
+
+        // Find the smallest point in this line segment
+        let (min, closest) = pts.iter().cloned().enumerate().fold1(|(pi, pp), (ni, np)| {
             const REALLY_FAR_AWAY: Point = Point{x: -100000.0, y: -1000000.0};
             if pp.distance_2(&REALLY_FAR_AWAY) < np.distance_2(&REALLY_FAR_AWAY) {
                 (pi, pp)
@@ -145,8 +149,12 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
             }
         }).unwrap();
 
-        rotate_and_correct(&mut pts, min + 1);
+        // Make the "smallest point" the first in the series.
+        rotate(&mut pts, min);
+
+        // Copy the first point to the end in order to complete the chain
         let first = *pts.first().unwrap();
+        assert_eq!(first, closest);
         pts.push(first);
 
         let dashed = dashify(pts.into_iter(), dash.iter().cloned());
@@ -377,7 +385,7 @@ fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) 
     }
 }
 
-fn rotate_and_correct(slice: &mut [Point], point: usize) {
+fn correct_spin(points: &mut [Point]) {
     fn is_clockwise(points: &[Point]) -> bool {
         let mut total = 0.0;
         for slice in points.windows(2) {
@@ -388,14 +396,25 @@ fn rotate_and_correct(slice: &mut [Point], point: usize) {
         total > 0.0
     }
 
+    if !is_clockwise(points) {
+        points.reverse();
+    }
+}
+
+fn rotate<T>(slice: &mut [T], at: usize) {
     {
-        let (a, b) = slice.split_at_mut(point);
+        let (a, b) = slice.split_at_mut(at);
         a.reverse();
         b.reverse();
     }
 
-    if !is_clockwise(slice) {
-        slice.reverse();
-    }
+    slice.reverse();
+}
+
+#[test]
+fn rotation_is_correct() {
+    let mut slice = [0, 1, 2, 3, 4, 5];
+    rotate(&mut slice, 3);
+    assert_eq!(slice[0], 3);
 }
 
