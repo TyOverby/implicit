@@ -26,9 +26,9 @@ impl PdfWriter {
         self.buffer = format!(r#"%PDF-1.6
 1 0 obj <</Type /Catalog /Pages 2 0 R>>
 endobj
-2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 {} {}]>>
+2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>>
 endobj
-3 0 obj<</Type /Page /Parent 2 0 R /Contents [4 0 R]>>
+3 0 obj<</Type /Page /Parent 2 0 R /Contents 4 0 R /MediaBox [0 0 {} {}]>>
 endobj
 "#, self.size.0, self.size.1);
 
@@ -41,20 +41,20 @@ endobj
         self.buffer.push_str("stream\n");
         self.buffer.push_str(&self.line_buffer);
         if length_of_line_buffer != 0 {
-            self.buffer.push_str("S\n");
+            self.buffer.push_str("S\n\n");
         }
 
         self.buffer.push_str("endstream\nendobj\n");
-        let xref_pos = self.buffer.len() + 1; // account for newline
+        let xref_pos = self.buffer.len() + 1; // account for the newline
         self.buffer.push_str(&format!(r#"
 xref
 0 5
 0000000000 65535 f
-0000000010 00000 n
-0000000059 00000 n
-0000000140 00000 n
+0000000009 00000 n
+0000000056 00000 n
+0000000111 00000 n
 {:010} 00000 n
-trailer <</Size 6/Root 1 0 R>>
+trailer <</Size 5 /Root 1 0 R>>
 startxref
 {}
 %%EOF"#, location_of_lines, xref_pos));
