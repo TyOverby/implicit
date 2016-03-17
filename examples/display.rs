@@ -7,6 +7,7 @@ use lux::prelude::*;
 use lux::interactive::Event;
 
 use implicit::*;
+use implicit::geom::Point;
 
 struct DisplayCanvas {
     zoom: f32,
@@ -57,7 +58,7 @@ impl <'a> OutputDevice for DrawStateHolder<'a> {
         *self.0 = DrawState::Start;
     }
 
-    fn add_point(&mut self, x: f32, y: f32) {
+    fn add_point(&mut self, Point{x, y}: Point) {
         let s = self.2;
         if let DrawState::Middle(px, py) = *self.0 {
             self.1.draw_line(px * s, py * s, x * s, y * s, 1.0);

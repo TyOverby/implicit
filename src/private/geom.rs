@@ -481,7 +481,7 @@ impl Matrix {
         Point { x: p[0], y: p[1] }
     }
 
-    pub fn apply_matrix(&mut self, matrix: [[f32; 3]; 3]) -> &mut Self {
+    pub fn apply_matrix(mut self, matrix: [[f32; 3]; 3]) -> Self {
         {
             let current = &mut self.m;
             *current = col_mat3_mul(*current, matrix);
@@ -489,7 +489,7 @@ impl Matrix {
         self
     }
 
-    pub fn translate(&mut self, dx: f32, dy: f32) -> &mut Self {
+    pub fn translate(self, dx: f32, dy: f32) -> Self {
         let mut prod = mat3_id();
         prod[2][0] = dx;
         prod[2][1] = dy;
@@ -497,7 +497,7 @@ impl Matrix {
     }
 
     /// Applies a scaling transformation to the matrix.
-    pub fn scale(&mut self, sx: f32, sy: f32) -> &mut Self {
+    pub fn scale(self, sx: f32, sy: f32) -> Self {
         let mut prod = mat3_id();
         prod[0][0] = sx;
         prod[1][1] = sy;
@@ -505,7 +505,7 @@ impl Matrix {
     }
 
     /// Applies a shearing transformation to the matrix.
-    pub fn shear(&mut self, sx: f32, sy: f32) -> &mut Self {
+    pub fn shear(self, sx: f32, sy: f32) -> Self {
         let mut prod = mat3_id();
         prod[1][0] = sx;
         prod[0][1] = sy;
@@ -513,7 +513,7 @@ impl Matrix {
     }
 
     /// Applies a rotation transformation to the matrix.
-    pub fn rotate(&mut self, theta: f32) -> &mut Self {
+    pub fn rotate(self, theta: f32) -> Self {
         let mut prod = mat3_id();
         let (c, s) = (theta.cos(), theta.sin());
         prod[0][0] = c;
@@ -521,6 +521,12 @@ impl Matrix {
         prod[1][0] = -s;
         prod[1][1] = c;
         self.apply_matrix(prod)
+    }
+
+    pub fn mirror_horizontal(self, x: f32) -> Self {
+        self.translate(x, 0.0)
+            .scale(-1.0, 1.0)
+            .translate(-x, 0.0)
     }
 }
 

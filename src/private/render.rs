@@ -6,6 +6,7 @@ use itertools::Itertools;
 use crossbeam;
 use flame;
 
+#[derive(Clone)]
 pub enum RenderMode {
     /// The shape is filled in and completely solid.
     Solid,

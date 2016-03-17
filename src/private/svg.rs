@@ -1,4 +1,5 @@
 use super::OutputDevice;
+use ::geom::Point;
 
 pub struct SvgWriter {
     buffer: String,
@@ -30,7 +31,7 @@ impl OutputDevice for SvgWriter {
         self.buffer.push_str(r#"<path fill="none" stroke-width="0.01px" stroke="black" d="M"#);
     }
 
-    fn add_point(&mut self, x: f32, y: f32) {
+    fn add_point(&mut self, Point{x, y}: Point) {
         self.buffer.push_str(&format!("{} {} L", x * self.conversion, y * self.conversion));
     }
 

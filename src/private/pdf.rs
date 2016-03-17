@@ -1,4 +1,5 @@
 use super::OutputDevice;
+use ::geom::Point;
 
 pub struct PdfWriter {
     size: (f32, f32),
@@ -74,7 +75,7 @@ impl OutputDevice for PdfWriter {
         self.start = true;
     }
 
-    fn add_point(&mut self, x: f32, y: f32) {
+    fn add_point(&mut self, Point{x, y}: Point) {
         let (x, y) = self.transform_point(x, y);
         self.line_buffer.push_str(&format!("{} {} {}\n", x, y, if self.start { "m" } else { "l" }));
         self.start = false;

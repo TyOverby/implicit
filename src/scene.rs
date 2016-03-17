@@ -1,8 +1,8 @@
 use ::{OutputMode, RenderMode, SyncImplicit, Implicit, render, OutputDevice};
-use ::geom::{Point, Rect};
+use ::geom::{Point, Rect, Matrix};
 
 pub struct Scene {
-    shapes: Vec<(Rect, (f32, f32), OutputMode)>,
+    shapes: Vec<(Rect, Matrix, OutputMode)>,
     pub resolution: f32,
     total_bounding_box: Rect,
 }
@@ -16,35 +16,38 @@ impl Scene {
         }
     }
 
-    pub fn add_shape<I: SyncImplicit>(&mut self, shape: &I, offset: (f32, f32), rendermode: RenderMode) -> usize {
+    pub fn add_shape<I: SyncImplicit>(&mut self, shape: &I, rendermode: RenderMode, matrix: Matrix) -> usize {
         let i = self.shapes.len();
-        let new_bb = shape.bounding_box().unwrap().expand(-offset.0, -offset.1, offset.0, offset.1);
+        let bb = shape.bounding_box().unwrap();
+        let new_bb = transform_bounding_box(bb, matrix);
+
         self.total_bounding_box = self.total_bounding_box.union_with(&new_bb);
-        self.shapes.push((shape.bounding_box().unwrap(), offset, render(shape, &rendermode, self.resolution, true)));
+        self.shapes.push((shape.bounding_box().unwrap(), matrix, render(shape, &rendermode, self.resolution, true)));
         i
     }
 
-    pub fn add_again(&mut self, again: usize, offset: (f32, f32)) {
+    pub fn add_again(&mut self, again: usize, matrix: Matrix) {
         let mut old = self.shapes[again].clone();
-        old.1 = offset;
-        old.0 = old.0.expand(-offset.0, -offset.1, offset.0, offset.1);
+        old.1 = matrix;
+        old.0 = transform_bounding_box(old.0, matrix);
+
         self.total_bounding_box = self.total_bounding_box.union_with(&old.0);
         self.shapes.push(old);
     }
 
     pub fn render_all<O: OutputDevice>(&self, out: &mut O) {
         out.set_size(self.total_bounding_box.width(), self.total_bounding_box.height());
-        for &(_, (ox, oy), ref rendered) in &self.shapes {
+        for &(_, matrix, ref rendered) in &self.shapes {
             match rendered {
                 &OutputMode::Solid(_) => unimplemented!(),
                 &OutputMode::Outline(ref lines) => {
                     for line in lines {
                         out.start_line();
-                        let Point{x: sx, y: sy} = line[0];
-                        for &Point{x, y} in line {
-                            out.add_point(x + ox, y + oy);
+                        let start = line[0];
+                        for p in line {
+                            out.add_point(matrix.transform_point(p));
                         }
-                        out.add_point(sx + ox, sy + oy);
+                        out.add_point(matrix.transform_point(&start));
                         out.end_line();
                     }
                 },
@@ -52,8 +55,8 @@ impl Scene {
                     for dashed_line in dashed {
                         for segment in dashed_line.segments() {
                             out.start_line();
-                            for &Point{x, y} in segment {
-                                out.add_point(x + ox, y + oy);
+                            for p in segment {
+                                out.add_point(matrix.transform_point(p));
                             }
                             out.end_line();
                         }
@@ -62,4 +65,16 @@ impl Scene {
             }
         }
     }
+}
+
+pub fn transform_bounding_box(bb: Rect, matrix: Matrix) -> Rect {
+    let a = matrix.transform_point(&bb.top_left());
+    let b = matrix.transform_point(&bb.top_right());
+    let c = matrix.transform_point(&bb.bottom_left());
+    let d = matrix.transform_point(&bb.bottom_right());
+    let mut new_bb = Rect::null_at(&a);
+    new_bb.expand_to_include(&b);
+    new_bb.expand_to_include(&c);
+    new_bb.expand_to_include(&d);
+    new_bb
 }

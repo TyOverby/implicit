@@ -149,6 +149,10 @@ fn hook_attach_stitch(middle_height: f32) -> Or<Rectangle, Rectangle> {
 
 
 fn main() {
+    fn offset(y: f32) -> Matrix {
+        Matrix::new().translate(50.0, y)
+    }
+
     let front_collar = front();
     let front_collar_outline = front_collar.clone().shrink(STITCH_OFFSET);
     let back_collar = back();
@@ -160,27 +164,35 @@ fn main() {
     let mut scene = Scene::new();
     scene.resolution = 0.5;
 
-    let f_c = scene.add_shape(&front_collar, (50.0, 50.0), RenderMode::Outline);
-    let f_o = scene.add_shape(&front_collar_outline, (50.0, 50.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
-    scene.add_shape(&hook_attach_stitched, (50.0, 50.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
+    let offset_50 = offset(50.0);
+    let offset_250 = offset(250.0);
+    let offset_450 = offset(450.0);
+    let offset_650 = offset(650.0);
+    let offset_850 = offset(850.0);
+    let offset_850_right = offset_850.translate(400.0, 0.0);
+    let center = front_collar.bounding_box().unwrap().midpoint();
 
-    scene.add_again(f_c, (50.0, 250.0));
-    scene.add_again(f_o, (50.0, 250.0));
+    let f_c = scene.add_shape(&front_collar, RenderMode::Outline, offset_50);
+    let f_o = scene.add_shape(&front_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_50);
+    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_50);
 
-    let b_c = scene.add_shape(&back_collar, (50.0, 450.0), RenderMode::Outline);
-    let b_o = scene.add_shape(&back_collar_outline, (50.0, 450.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
-    scene.add_shape(&hook_attach_stitched, (50.0, 450.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
+    scene.add_again(f_c, offset_250.mirror_horizontal(center.x));
+    scene.add_again(f_o, offset_250.mirror_horizontal(center.x));
 
-    scene.add_again(b_c, (50.0, 650.0));
-    scene.add_again(b_o, (50.0, 650.0));
+    let b_c = scene.add_shape(&back_collar, RenderMode::Outline, offset_450);
+    let b_o = scene.add_shape(&back_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_450);
+    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_450);
+
+    scene.add_again(b_c, offset_650.mirror_horizontal(center.x));
+    scene.add_again(b_o, offset_650.mirror_horizontal(center.x));
 
     let hook_attach = hook_attach(HOOK_ATTACH_SPACING);
     let hook_attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
 
-    let h_a = scene.add_shape(&hook_attach, (50.0, 850.0), RenderMode::Outline);
-    let h_a_s = scene.add_shape(&hook_attach_stitch, (50.0, 850.0), RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]));
-    scene.add_again(h_a, (500.0, 850.0));
-    scene.add_again(h_a_s, (500.0, 850.0));
+    let h_a = scene.add_shape(&hook_attach, RenderMode::Outline, offset_850);
+    let h_a_s = scene.add_shape(&hook_attach_stitch, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_850);
+    scene.add_again(h_a, offset_850_right);
+    scene.add_again(h_a_s, offset_850_right);
 
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);
