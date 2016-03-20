@@ -11,7 +11,7 @@ use implicit::geom::*;
 const DASH_SIZE: f32 = 5.0;
 
 // BASE
-const NECK_CIRC: f32 = 1450.0;
+const NECK_CIRC: f32 = 1250.0;
 const MAIN_HEIGHT: f32 = 100.0;
 
 // FRONT
@@ -164,11 +164,11 @@ fn main() {
     let mut scene = Scene::new();
     scene.resolution = 0.5;
 
-    let offset_50 = offset(50.0);
-    let offset_250 = offset(250.0);
-    let offset_450 = offset(450.0);
-    let offset_650 = offset(650.0);
-    let offset_850 = offset(850.0);
+    let offset_50 = offset(0.0);
+    let offset_250 = offset(200.0);
+    let offset_450 = offset(400.0);
+    let offset_650 = offset(600.0);
+    let offset_850 = offset(800.0);
     let offset_850_right = offset_850.translate(400.0, 0.0);
     let center = front_collar.bounding_box().unwrap().midpoint();
 

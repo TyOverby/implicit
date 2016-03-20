@@ -14,7 +14,7 @@ impl PdfWriter {
         PdfWriter {
             size: (800.0, 800.0),
             buffer: String::new(),
-            line_buffer: String::new(),
+            line_buffer: "w 0\n".into(),
             conversion: conversion_factor,
             start: false
         }
