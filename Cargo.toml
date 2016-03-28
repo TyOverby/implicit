@@ -2,14 +2,16 @@
 name = "implicit"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
-
-[dependencies.lux]
-path = "../lux"
+license = "GPL-2.0"
+description = "A library for playing with 2d implicit geometry"
 
 [dependencies]
 rand = "0.3"
 vecmath = "0.1.1"
-itertools = "*"
-crossbeam = "*"
+itertools = "0.4.11"
+crossbeam = "0.2.8"
 flame = "0.1.2"
 fnv = "1.0.2"
+
+[dev-dependencies]
+lux = "0.1.1"
