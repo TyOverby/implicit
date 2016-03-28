@@ -8,7 +8,8 @@ use implicit::*;
 use implicit::geom::*;
 
 // ALL
-const DASH_SIZE: f32 = 5.0;
+const DASH_SIZE_ON: f32 = 7.0;
+const DASH_SIZE_OFF: f32 = 10.0;
 
 // BASE
 const NECK_CIRC: f32 = 1250.0;
@@ -173,15 +174,15 @@ fn main() {
     let center = front_collar.bounding_box().unwrap().midpoint();
 
     let f_c = scene.add_shape(&front_collar, RenderMode::Outline, offset_50);
-    let f_o = scene.add_shape(&front_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_50);
-    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_50);
+    let f_o = scene.add_shape(&front_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_50);
+    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_50);
 
     scene.add_again(f_c, offset_250.mirror_horizontal(center.x));
     scene.add_again(f_o, offset_250.mirror_horizontal(center.x));
 
     let b_c = scene.add_shape(&back_collar, RenderMode::Outline, offset_450);
-    let b_o = scene.add_shape(&back_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_450);
-    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_450);
+    let b_o = scene.add_shape(&back_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_450);
+    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_450);
 
     scene.add_again(b_c, offset_650.mirror_horizontal(center.x));
     scene.add_again(b_o, offset_650.mirror_horizontal(center.x));
@@ -190,7 +191,7 @@ fn main() {
     let hook_attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
 
     let h_a = scene.add_shape(&hook_attach, RenderMode::Outline, offset_850);
-    let h_a_s = scene.add_shape(&hook_attach_stitch, RenderMode::DashedPerfect(vec![DASH_SIZE, DASH_SIZE]), offset_850);
+    let h_a_s = scene.add_shape(&hook_attach_stitch, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_850);
     scene.add_again(h_a, offset_850_right);
     scene.add_again(h_a_s, offset_850_right);
 
