@@ -7,6 +7,7 @@ extern crate itertools;
 extern crate crossbeam;
 extern crate flame;
 extern crate fnv;
+extern crate num_cpus;
 
 extern crate test;
 
@@ -488,6 +489,10 @@ impl Implicit for Polygon {
         let mut min = ::std::f32::INFINITY;
         for line in self.lines() {
             min = min.min(line.dist_to_point(&pos));
+        }
+
+        if min != 0.0 {
+            //panic!("")
         }
 
         let inside = match (is_inside(pos, self.lines(), 1.0, 1.0),

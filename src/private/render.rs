@@ -247,8 +247,8 @@ where A: Implicit + Sync {
 }
 
 fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
-    let chunks = sample_points.chunks(sample_points.len() / 8 + 1);
-    let chunks: Vec<Vec<_>> = chunks.map(|a| a.to_vec()).collect();
+    // TODO: make a buffer here and unsafely write to it from the multiple threads
+    let chunks = sample_points.chunks(sample_points.len() / ::num_cpus::get());
     let lines = crossbeam::scope(|scope| {
         let mut joiners = vec![];
 
@@ -259,7 +259,7 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
                 let mut p_right_top: Option<(Point, f32)> = None;
                 let mut p_right_bot: Option<(Point, f32)> = None;
 
-                for (sx, sy) in chunk {
+                for &(sx, sy) in chunk {
                     let p = Point{x: sx, y: sy};
 
                     let sa = A * resolution + p;

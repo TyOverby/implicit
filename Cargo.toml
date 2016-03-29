@@ -11,6 +11,7 @@ vecmath = "0.1.1"
 itertools = "0.4.11"
 crossbeam = "0.2.8"
 fnv = "1.0.2"
+num_cpus = "0.2.11"
 
 [dependencies.flame]
 path = "../flame"
