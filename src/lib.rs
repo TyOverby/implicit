@@ -488,7 +488,7 @@ impl Implicit for Polygon {
 
         let mut min = ::std::f32::INFINITY;
         for line in self.lines() {
-            min = min.min(line.dist_to_point(&pos));
+            min = min.min(line.dist_to_point_2(&pos));
         }
 
         if min != 0.0 {
@@ -503,9 +503,9 @@ impl Implicit for Polygon {
         };
 
         if inside {
-            min
+            min.sqrt()
         } else {
-            -min
+            -min.sqrt()
         }
     }
 
