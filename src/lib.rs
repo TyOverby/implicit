@@ -234,8 +234,10 @@ pub struct Transformation<A: Implicit> {
 impl Implicit for PolyGroup {
     fn sample(&self, pos: Point) -> f32 {
         const INF: f32 = ::std::f32::INFINITY;
+
         let sampled = self.polys.iter().map(|a| a.sample(pos)).collect::<Vec<_>>();
         let inside_count = sampled.iter().filter(|&&a| a < 0.0).count();
+
         let closest = sampled.iter().fold(INF, |best, contender| {
             let contender = contender.abs();
             if contender < best { contender } else { best }
@@ -476,16 +478,13 @@ impl Implicit for Polygon {
 
         fn is_inside(pos: Point, lines: &[Line]) -> bool {
             let ray = Ray(pos, Vector{x: rand::random(), y: rand::random()});
-            // keep a list of these so we can tag duplicates
-            let mut hit_points = vec![];
+            let mut hit_count = 0;
             for line in lines {
-                if let Some(point) = ray.intersect_with_line(line) {
-                    if !hit_points.iter().any(|p: &Point| p.close_to(&point, EPSILON)) {
-                        hit_points.push(point);
-                    }
+                if ray.intersect_with_line(line).is_some() {
+                    hit_count += 1;
                 }
             }
-            hit_points.len() % 2 == 0
+            hit_count % 2 == 0
         }
 
         let mut min = ::std::f32::INFINITY;
