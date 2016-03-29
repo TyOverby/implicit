@@ -12,10 +12,10 @@ pub enum MarchResult {
 // A N B
 // W P E
 // D S C
-const A: Vector = Vector { x: -0.5, y: -0.5 };
-const B: Vector = Vector { x:  0.5, y: -0.5 };
-const C: Vector = Vector { x:  0.5, y:  0.5 };
-const D: Vector = Vector { x: -0.5, y:  0.5 };
+pub const A: Vector = Vector { x: -0.5, y: -0.5 };
+pub const B: Vector = Vector { x:  0.5, y: -0.5 };
+pub const C: Vector = Vector { x:  0.5, y:  0.5 };
+pub const D: Vector = Vector { x: -0.5, y:  0.5 };
 
 const N: Vector = Vector { x:  0.0, y: -0.5 };
 const S: Vector = Vector { x:  0.0, y:  0.5 };
@@ -54,17 +54,7 @@ fn lerp(fa: f32, fb: f32, dist: f32) -> f32 {
     -dist / 2.0 + dist * ((-fa) / (fb - fa))
 }
 
-pub fn march<I: Implicit>(i: &I, p: Point, dist: f32) -> MarchResult {
-    let sa = A * dist + p;
-    let sb = B * dist + p;
-    let sc = C * dist + p;
-    let sd = D * dist + p;
-
-    let sra = i.sample(sa);
-    let srb = i.sample(sb);
-    let src = i.sample(sc);
-    let srd = i.sample(sd);
-
+pub fn march<I: Implicit>(sra: f32, srb: f32, src: f32, srd: f32, i: &I, p: Point, dist: f32) -> MarchResult {
     let a_on = sra <= 0.0;
     let b_on = srb <= 0.0;
     let c_on = src <= 0.0;

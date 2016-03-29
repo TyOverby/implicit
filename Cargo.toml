@@ -10,8 +10,11 @@ rand = "0.3"
 vecmath = "0.1.1"
 itertools = "0.4.11"
 crossbeam = "0.2.8"
-flame = "0.1.2"
 fnv = "1.0.2"
+
+[dependencies.flame]
+path = "../flame"
+#flame = "0.1.2"
 
 [dev-dependencies]
 lux = "0.1.1"

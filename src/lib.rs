@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(test)]
 
 extern crate vecmath;
 extern crate rand;
@@ -6,6 +7,8 @@ extern crate itertools;
 extern crate crossbeam;
 extern crate flame;
 extern crate fnv;
+
+extern crate test;
 
 mod private;
 mod scene;
@@ -693,4 +696,35 @@ impl Implicit for Rectangle {
     }
 
     fn follows_rules(&self) -> bool { true }
+}
+
+mod bench {
+    use test::Bencher;
+    use super::*;
+    use super::geom::*;
+
+    #[bench]
+    fn bench(bencher: &mut Bencher) {
+        let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 100.0};
+        let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 50.0, y: 50.0 }));
+        let poly = circle.or(square).smooth(10.0, 1.0);
+
+        bencher.iter(|| {
+            let a = render(poly.clone(), &RenderMode::Outline, 1.0, true);
+            ::flame::dump_stdout();
+            a
+        });
+    }
+
+    #[test]
+    fn foo() {
+        let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 100.0};
+        let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 50.0, y: 50.0 }));
+        let poly = ::flame::span_of("prep", || circle.or(square).smooth(10.0, 1.0));
+
+        let a = ::flame::span_of("real deal", || render(poly.clone(), &RenderMode::Outline, 1.0, true));
+        println!("");
+        ::flame::dump_stdout();
+        panic!();
+    }
 }

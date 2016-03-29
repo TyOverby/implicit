@@ -1,4 +1,4 @@
-use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line};
+use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line, A, B, C, D};
 
 use ::Implicit;
 use std::cmp::{PartialOrd, Ordering};
@@ -216,24 +216,34 @@ where A: Implicit + Sync {
     const FACTOR: f32 = 1.0;
 //    let object = Implicit::scale(object, FACTOR, FACTOR);
 //    let resolution = resolution * FACTOR;
+
+    flame::start("collect sampling points");
     let sample_points = sampling_points(&object, resolution);
+    flame::end("collect sampling points");
+
     flame::start("gather lines");
     let lines = gather_lines(resolution, sample_points, &object);
     flame::end("gather lines");
 
+    flame::start("connect lines");
     let (mut connected_lines, _tree) = connect_lines(lines, resolution);
     if simplify {
         connected_lines = connected_lines.into_iter().map(simplify_line).collect();
     }
+    flame::end("connect lines");
 
+    /*
     for group in &mut connected_lines {
         for &mut Point { ref mut x, ref mut y } in group.iter_mut() {
             *x /= FACTOR;
             *y /= FACTOR;
         }
-    }
+    }*/
 
-    transform(connected_lines, rm)
+    flame::start("transform lines");
+    let r = transform(connected_lines, rm);
+    flame::end("transform lines");
+    r
 }
 
 fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
@@ -245,8 +255,35 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
         for chunk in chunks {
             joiners.push(scope.spawn(move || {
                 let mut local_lines = vec![];
+
+                let mut p_right_top: Option<(Point, f32)> = None;
+                let mut p_right_bot: Option<(Point, f32)> = None;
+
                 for (sx, sy) in chunk {
-                    match march(shape, Point {x: sx, y: sy}, resolution) {
+                    let p = Point{x: sx, y: sy};
+
+                    let sa = A * resolution + p;
+                    let sb = B * resolution + p;
+                    let sc = C * resolution + p;
+                    let sd = D * resolution + p;
+
+                    ::flame::start("sampling");
+                    let sra = match p_right_top {
+                        Some((pp, pv)) if pp.close_to(&sa, resolution) => pv,
+                        _ => shape.sample(sa),
+                    };
+                    let srb = shape.sample(sb);
+                    let src = shape.sample(sc);
+                    let srd = match p_right_bot {
+                        Some((pp, pv)) if pp.close_to(&sd, resolution) => pv,
+                        _ => shape.sample(sd),
+                    };
+                    ::flame::end("sampling");
+
+                    p_right_top = Some((sb, srb));
+                    p_right_bot = Some((sc, src));
+
+                    match march(sra, srb, src, srd, shape, p, resolution) {
                         MarchResult::None => {},
                         MarchResult::One(line) => local_lines.push(line),
                         MarchResult::Two(line1, line2) => {
@@ -303,11 +340,14 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32
     }
 
     if shape.follows_rules() {
+        ::flame::start("subdividing");
         subdivide(shape, bb, sample_dist, &mut out);
+        ::flame::end("subdividing");
     } else {
         sample_from_box(bb, sample_dist, &mut out);
     }
 
+    ::flame::start("remove overlapping");
     out.sort_by(|a, b| {
         match a.x.partial_cmp(&b.x) {
             Some(a) => a,
@@ -323,9 +363,10 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32
         }
     });
     remove_similar(&mut out);
+    ::flame::end("remove overlapping");
 
     // TODO: make this function return points
-    out.into_iter().map(|p| p.into_tuple()).collect()
+    flame::span_of("conversion", || out.into_iter().map(|p| p.into_tuple()).collect())
 }
 
 fn remove_similar(out: &mut Vec<Point>) {
