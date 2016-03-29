@@ -473,17 +473,15 @@ impl <I: Implicit> Implicit for Not<I> {
 
 impl Implicit for Polygon {
     fn sample(&self, pos: Point) -> f32 {
-        const EPSILON: f32 = 0.0001;
-        const ITERS: i32 = 3;
-
-        fn is_inside(pos: Point, lines: &[Line]) -> bool {
-            let ray = Ray(pos, Vector{x: rand::random(), y: rand::random()});
+        fn is_inside(pos: Point, lines: &[Line], vx: f32, vy: f32) -> bool {
+            let ray = Ray(pos, Vector{x: vx, y: vy});
             let mut hit_count = 0;
             for line in lines {
                 if ray.intersect_with_line(line).is_some() {
                     hit_count += 1;
                 }
             }
+
             hit_count % 2 == 0
         }
 
@@ -492,14 +490,12 @@ impl Implicit for Polygon {
             min = min.min(line.dist_to_point(&pos));
         }
 
-        let mut inside_cnt = 0;
-        for _ in 0 .. ITERS {
-            if is_inside(pos, self.lines()) {
-                inside_cnt += 1;
-            }
-        }
-
-        let inside = inside_cnt > (ITERS / 2);
+        let inside = match (is_inside(pos, self.lines(), 1.0, 1.0),
+                            is_inside(pos, self.lines(), 1.0, -1.0)) {
+            (true, true) => true,
+            (false, false) => false,
+            _ => is_inside(pos, self.lines(), -1.0, 1.0),
+        };
 
         if inside {
             min
