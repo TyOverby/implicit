@@ -268,16 +268,27 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
                     let sd = D * resolution + p;
 
                     ::flame::start("sampling");
+
                     let sra = match p_right_top {
-                        Some((pp, pv)) if pp.close_to(&sa, resolution) => pv,
-                        _ => shape.sample(sa),
+                        Some((pp, pv)) if pp.close_to(&sa, resolution) => {
+                            pv
+                        }
+                        _ => {
+                            shape.sample(sa)
+                        }
                     };
+
+                    let srd = match p_right_bot {
+                        Some((pp, pv)) if pp.close_to(&sd, resolution) => {
+                            pv
+                        }
+                        _ => {
+                            shape.sample(sd)
+                        }
+                    };
+
                     let srb = shape.sample(sb);
                     let src = shape.sample(sc);
-                    let srd = match p_right_bot {
-                        Some((pp, pv)) if pp.close_to(&sd, resolution) => pv,
-                        _ => shape.sample(sd),
-                    };
                     ::flame::end("sampling");
 
                     p_right_top = Some((sb, srb));
