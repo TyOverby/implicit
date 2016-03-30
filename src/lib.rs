@@ -478,7 +478,7 @@ impl Implicit for Polygon {
             let ray = Ray(pos, Vector{x: vx, y: vy});
             let mut hit_count = 0;
             for line in lines {
-                if ray.intersect_with_line(line).is_some() {
+                if ray.does_intersect_with_line(line) {
                     hit_count += 1;
                 }
             }
@@ -705,15 +705,6 @@ mod bench {
 
     #[bench]
     fn bench(bencher: &mut Bencher) {
-        let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 100.0};
-        let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 50.0, y: 50.0 }));
-        let poly = circle.or(square).smooth(10.0, 1.0);
-
-        bencher.iter(|| {
-            let a = render(poly.clone(), &RenderMode::Outline, 1.0, true);
-            ::flame::dump_stdout();
-            a
-        });
     }
 
     #[test]

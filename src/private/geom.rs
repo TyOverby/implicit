@@ -441,6 +441,27 @@ impl Vector {
 }
 
 impl Ray {
+    #[inline]
+    pub fn does_intersect_with_line(&self, line: &Line) -> bool {
+        let ray_origin = self.0;
+        let ray_direction = self.1;
+        let point_1 = line.0;
+        let point_2 = line.1;
+
+        let v1 = ray_origin - point_1;
+        let v2 = point_2 - point_1;
+        let v3 = Vector {x: -ray_direction.y, y: ray_direction.x};
+
+        let t1 = v2.cross(&v1) / v2.dot(&v3);
+        let t2 = v1.dot(&v3) / v2.dot(&v3);
+
+        if t1 >= 0.0 && t2 >= 0.0 && t2 <= 1.0 {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn intersect_with_line(&self, line: &Line) -> Option<Point> {
         let ray_origin = self.0;
         let ray_direction = self.1;
