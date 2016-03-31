@@ -17,5 +17,8 @@ num_cpus = "0.2.11"
 path = "../flame"
 #flame = "0.1.2"
 
+[dependencies.simd]
+git = "https://github.com/rekka/simd.git"
+
 [dev-dependencies]
 lux = "0.1.1"

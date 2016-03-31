@@ -256,6 +256,7 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
             joiners.push(scope.spawn(move || {
                 let mut local_lines = vec![];
 
+                // Previously sampled points
                 let mut p_right_top: Option<(Point, f32)> = None;
                 let mut p_right_bot: Option<(Point, f32)> = None;
 
@@ -268,7 +269,6 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
                     let sd = D * resolution + p;
 
                     ::flame::start("sampling");
-
                     let sra = match p_right_top {
                         Some((pp, pv)) if pp.close_to(&sa, resolution) => {
                             pv

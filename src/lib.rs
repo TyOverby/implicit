@@ -7,6 +7,7 @@ extern crate crossbeam;
 extern crate flame;
 extern crate fnv;
 extern crate num_cpus;
+extern crate simd;
 
 mod private;
 mod scene;
@@ -471,6 +472,9 @@ impl <I: Implicit> Implicit for Not<I> {
 
 impl Implicit for Polygon {
     fn sample(&self, pos: Point) -> f32 {
+        use simd::*;
+        use std::cmp::min;
+
         fn is_inside(pos: Point, lines: &[Line], vx: f32, vy: f32) -> bool {
             let ray = Ray(pos, Vector{x: vx, y: vy});
             let mut hit_count = 0;
@@ -483,13 +487,43 @@ impl Implicit for Polygon {
             hit_count % 2 == 0
         }
 
-        let mut min = ::std::f32::INFINITY;
-        for line in self.lines() {
-            min = min.min(line.dist_to_point_2(&pos));
+        let mut left_xs = self.left_xs();
+        let mut left_ys = self.left_ys();
+        let mut right_xs = self.right_xs();
+        let mut right_ys = self.right_ys();
+        // Even though this is a noop, we do this to trick LLVM into optimizing away bounds checks.
+        let min_len = min(min(left_xs.len(), left_ys.len()),min(right_xs.len(), right_ys.len()));
+        left_xs = &left_xs[.. min_len];
+        left_ys = &left_ys[.. min_len];
+        right_xs = &right_xs[.. min_len];
+        right_ys = &right_ys[.. min_len];
+
+        let pos_x = f32x4::splat(pos.x);
+        let pos_y = f32x4::splat(pos.y);
+        let mut min_dist = f32x4::splat(::std::f32::INFINITY);
+        let mut simd_used = 0;
+        while left_xs.len() >= 4 && left_ys.len() >= 4 && right_xs.len() >= 4 && right_ys.len() >= 4 {
+            let wx = f32x4::load(left_xs, 0);
+            let wy = f32x4::load(left_ys, 0);
+
+            let vx = f32x4::load(right_xs, 0);
+            let vy = f32x4::load(right_ys, 0);
+
+            min_dist = min_dist.min(::geom::line_to_point_simd(pos_x, pos_y, vx, vy, wx, wy));
+
+            left_xs = &left_xs[4 ..];
+            left_ys = &left_ys[4 ..];
+            right_xs = &right_xs[4 ..];
+            right_ys = &right_ys[4 ..];
+            simd_used += 4;
         }
 
-        if min != 0.0 {
-            //panic!("")
+        let mut out = [0.0, 0.0, 0.0, 0.0];
+        min_dist.store(&mut out, 0);
+
+        let mut min = out[0].min(out[1]).min(out[2]).min(out[3]);
+        for line in &self.lines()[simd_used..] {
+            min = min.min(line.dist_to_point_2(pos));
         }
 
         let inside = match (is_inside(pos, self.lines(), 1.0, 1.0),

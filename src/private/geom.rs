@@ -1,5 +1,6 @@
 use std::ops::{Neg, Add, Sub, Mul, Div};
 use vecmath::*;
+use simd::*;
 
 #[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Point {
@@ -30,6 +31,7 @@ pub struct Ray(pub Point, pub Vector);
 pub struct Polygon {
     points: Vec<Point>,
     lines: Vec<Line>,
+    segments: Vec<f32>,
 }
 
 #[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
@@ -127,21 +129,53 @@ impl Div<f32> for Vector {
     }
 }
 
+pub fn line_to_point_simd(
+    px: f32x4, py: f32x4,
+    vx: f32x4, vy: f32x4,
+    wx: f32x4, wy: f32x4) -> f32x4 {
+    let zero: f32x4 = f32x4::splat(0.0);
+    let one: f32x4 = f32x4::splat(1.0);
+
+    fn square(v: f32x4) -> f32x4 { v * v }
+    fn dist_2(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
+        square(x1 - x2) + square(y1 - y2)
+    }
+    fn clamp(low: f32x4, value: f32x4, high: f32x4) -> f32x4 {
+        low.max(value.min(high))
+    }
+    fn dot(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
+        x1 * x2 + y1 * y2
+    }
+    fn project(vx: f32x4, vy: f32x4,
+               wx: f32x4, wy: f32x4,
+               t: f32x4) -> (f32x4, f32x4) {
+        //v + t * (w - v)
+        (
+            vx + t * (wx - vx),
+            vy + t * (wy - vy),
+        )
+    }
+
+    let l2 = dist_2(vx, vy, wx, wy); 
+    let t = clamp(zero, dot(px - vx, py - vy, wx - vx, wy - vy) / l2, one);
+    let (proj_x, proj_y) = project(vx, vy, wx, wy, t);
+    dist_2(px, py, proj_x, proj_y)
+}
 
 impl Line {
     pub fn bounding_box(&self) -> Rect {
         Rect::from_points(&self.0, &self.1)
     }
 
-    pub fn dist_to_point_2(&self, p: &Point) -> f32 {
+    pub fn dist_to_point_2(&self, p: Point) -> f32 {
         #[inline(always)]
         fn sqr(x: f32) -> f32 { x * x }
         #[inline(always)]
-        fn dist2(v: &Point, w: &Point) -> f32 {
+        fn dist2(v: Point, w: Point) -> f32 {
             sqr(v.x - w.x) + sqr(v.y - w.y)
         }
         #[inline(always)]
-        fn dist_to_segment_squared(p: &Point, v: &Point, w: &Point) -> f32 {
+        fn dist_to_segment_squared(p: Point, v: Point, w: Point) -> f32 {
             let l2 = dist2(v, w);
             if l2 == 0.0 { //  TODO: epsilon
                 return dist2(p, v);
@@ -152,17 +186,17 @@ impl Line {
             } else if t > 1.0 {
                 dist2(p, w)
             } else {
-                dist2(p, &Point {
+                dist2(p, Point {
                     x: v.x + t * (w.x - v.x),
                     y: v.y + t * (w.y - v.y)
                 })
             }
         }
 
-        dist_to_segment_squared(p, &self.0, &self.1)
+        dist_to_segment_squared(p, self.0, self.1)
     }
 
-    pub fn dist_to_point(&self, p: &Point) -> f32 {
+    pub fn dist_to_point(&self, p: Point) -> f32 {
         self.dist_to_point_2(p).sqrt()
     }
 }
@@ -387,10 +421,36 @@ impl Polygon {
     pub fn new<I: Iterator<Item=Point>>(i: I) -> Polygon {
         let points: Vec<_> = i.collect();
         let lines  = Polygon::compute_lines(&points[..]);
+
+        let segments = {
+            let left_xs = lines.iter().map(|p| p.0.x);
+            let left_ys = lines.iter().map(|p| p.0.y);
+            let right_xs = lines.iter().map(|p| p.1.x);
+            let right_ys = lines.iter().map(|p| p.1.y);
+            left_xs.chain(left_ys).chain(right_xs).chain(right_ys)
+        }.collect();
+
         Polygon {
             points: points,
             lines: lines,
+            segments: segments,
         }
+    }
+
+    pub fn left_xs(&self) -> &[f32] {
+        &self.segments[0 * self.points.len() .. 1 * self.points.len()]
+    }
+
+    pub fn left_ys(&self) -> &[f32] {
+        &self.segments[1 * self.points.len() .. 2 * self.points.len()]
+    }
+
+    pub fn right_xs(&self) -> &[f32] {
+        &self.segments[2 * self.points.len() .. 3 * self.points.len()]
+    }
+
+    pub fn right_ys(&self) -> &[f32] {
+        &self.segments[3 * self.points.len() .. 4 * self.points.len()]
     }
 
     // TODO: make this a lazy iterator.

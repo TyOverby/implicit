@@ -62,7 +62,7 @@ pub fn simplify_line(pts: Vec<Point>) -> Vec<Point> {
 
     while let Some(p) = pts.next() {
         let line = Line(first, p);
-        let dist_to_prev = line.dist_to_point(&prev);
+        let dist_to_prev = line.dist_to_point(prev);
         if dist_to_prev < EPSILON {
             prev = p;
         } else {
