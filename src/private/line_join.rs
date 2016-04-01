@@ -3,6 +3,7 @@ use std::cmp::{PartialOrd, Ordering};
 use super::*;
 
 const EPSILON: f32 = 0.001;
+const OPT_EPSILON: f32 = 0.05;
 
 #[derive(Debug)]
 enum LineType {
@@ -63,7 +64,7 @@ pub fn simplify_line(pts: Vec<Point>) -> Vec<Point> {
     while let Some(p) = pts.next() {
         let line = Line(first, p);
         let dist_to_prev = line.dist_to_point(prev);
-        if dist_to_prev < EPSILON {
+        if dist_to_prev < OPT_EPSILON {
             prev = p;
         } else {
             out.push(prev);
