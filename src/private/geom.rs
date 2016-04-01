@@ -1,6 +1,5 @@
 use std::ops::{Neg, Add, Sub, Mul, Div};
 use vecmath::*;
-use simd::*;
 
 #[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
 pub struct Point {
@@ -127,39 +126,6 @@ impl Div<f32> for Vector {
             y: self.y / rhs,
         }
     }
-}
-
-pub fn line_to_point_simd(
-    px: f32x4, py: f32x4,
-    vx: f32x4, vy: f32x4,
-    wx: f32x4, wy: f32x4) -> f32x4 {
-    let zero: f32x4 = f32x4::splat(0.0);
-    let one: f32x4 = f32x4::splat(1.0);
-
-    fn square(v: f32x4) -> f32x4 { v * v }
-    fn dist_2(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
-        square(x1 - x2) + square(y1 - y2)
-    }
-    fn clamp(low: f32x4, value: f32x4, high: f32x4) -> f32x4 {
-        low.max(value.min(high))
-    }
-    fn dot(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
-        x1 * x2 + y1 * y2
-    }
-    fn project(vx: f32x4, vy: f32x4,
-               wx: f32x4, wy: f32x4,
-               t: f32x4) -> (f32x4, f32x4) {
-        //v + t * (w - v)
-        (
-            vx + t * (wx - vx),
-            vy + t * (wy - vy),
-        )
-    }
-
-    let l2 = dist_2(vx, vy, wx, wy); 
-    let t = clamp(zero, dot(px - vx, py - vy, wx - vx, wy - vy) / l2, one);
-    let (proj_x, proj_y) = project(vx, vy, wx, wy, t);
-    dist_2(px, py, proj_x, proj_y)
 }
 
 impl Line {
@@ -626,5 +592,119 @@ impl Point {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         dx * dx + dy * dy
+    }
+}
+
+pub mod simd {
+    use simd::*;
+
+    #[inline(always)]
+    fn square(v: f32x4) -> f32x4 { v * v }
+
+    #[inline(always)]
+    fn dist_2(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
+        square(x1 - x2) + square(y1 - y2)
+    }
+
+    #[inline(always)]
+    fn clamp(low: f32x4, value: f32x4, high: f32x4) -> f32x4 {
+        low.max(value.min(high))
+    }
+
+    #[inline(always)]
+    fn dot(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
+        x1 * x2 + y1 * y2
+    }
+
+    #[inline(always)]
+    fn cross(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
+        x1 * x2 - y1 * y2
+    }
+
+    #[inline(always)]
+    fn project(vx: f32x4, vy: f32x4,
+               wx: f32x4, wy: f32x4,
+               t: f32x4) -> (f32x4, f32x4) {
+        (
+            vx + t * (wx - vx),
+            vy + t * (wy - vy),
+        )
+    }
+
+    pub fn line_to_point_simd(
+        px: f32x4, py: f32x4,
+        vx: f32x4, vy: f32x4,
+        wx: f32x4, wy: f32x4) -> f32x4 {
+        let zero: f32x4 = f32x4::splat(0.0);
+        let one: f32x4 = f32x4::splat(1.0);
+
+        let l2 = dist_2(vx, vy, wx, wy); 
+        let t = clamp(zero, dot(px - vx, py - vy, wx - vx, wy - vy) / l2, one);
+        let (proj_x, proj_y) = project(vx, vy, wx, wy, t);
+        dist_2(px, py, proj_x, proj_y)
+    }
+
+    pub fn lines_touching_rays(
+        px: f32x4, py: f32x4,
+        r1x: f32x4, r1y: f32x4,
+        r2x: f32x4, r2y: f32x4,
+        wx: f32x4, wy: f32x4,
+        vx: f32x4, vy: f32x4) -> (i32x4, i32x4) {
+
+        let a1x = px - wx;
+        let a1y = py - wy;
+
+        let a2x = vx - wx;
+        let a2y = vy - wy;
+
+        let a3_1x = -r1y;
+        let a3_1y = r1x;
+
+        let a3_2x = -r2y;
+        let a3_2y = r2x;
+
+        let t1_1 = cross(a2x, a2y, a1x, a1y) / dot(a2x, a2y, a3_1x, a3_1y);
+        let t1_2 = cross(a2x, a2y, a1x, a1y) / dot(a2x, a2y, a3_2x, a3_2y);
+
+        let t2_1 = dot(a1x, a1y, a3_1x, a3_1y) / dot(a2x, a2y, a3_1x, a3_1y);
+        let t2_2 = dot(a1x, a1y, a3_2x, a3_2y) / dot(a2x, a2y, a3_2x, a3_2y);
+
+        let zero = f32x4::splat(0.0);
+        let one = f32x4::splat(1.0);
+        let zero_i = i32x4::splat(0);
+        let one_i = i32x4::splat(1);
+
+        let mask_1_1 = t1_1.ge(zero);
+        let mask_2_1 = t2_1.ge(zero);
+        let mask_3_1 = t2_1.le(one);
+        let mask_all_1 = mask_1_1 & mask_2_1 & mask_3_1;
+        let i_count_1 = mask_all_1.to_i().select(one_i, zero_i);
+
+        let mask_1_2 = t1_2.ge(zero);
+        let mask_2_2 = t2_2.ge(zero);
+        let mask_3_2 = t2_2.le(one);
+        let mask_all_2 = mask_1_2 & mask_2_2 & mask_3_2;
+        let i_count_2 = mask_all_2.to_i().select(one_i, zero_i);
+
+        (i_count_1, i_count_2)
+
+        /*
+        let ray_origin = self.0;
+        let ray_direction = self.1;
+        let point_1 = line.0;
+        let point_2 = line.1;
+
+        let v1 = ray_origin - point_1;
+        let v2 = point_2 - point_1;
+        let v3 = Vector {x: -ray_direction.y, y: ray_direction.x};
+
+        let t1 = v2.cross(&v1) / v2.dot(&v3);
+        let t2 = v1.dot(&v3) / v2.dot(&v3);
+
+        if t1 >= 0.0 && t2 >= 0.0 && t2 <= 1.0 {
+            true
+        } else {
+            false
+        }*/
     }
 }
