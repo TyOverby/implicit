@@ -652,6 +652,8 @@ pub mod simd {
         r2x: f32x4, r2y: f32x4,
         wx: f32x4, wy: f32x4,
         vx: f32x4, vy: f32x4) -> (i32x4, i32x4) {
+        let zero = f32x4::splat(0.0);
+        let one = f32x4::splat(1.0);
 
         let a1x = px - wx;
         let a1y = py - wy;
@@ -659,10 +661,10 @@ pub mod simd {
         let a2x = vx - wx;
         let a2y = vy - wy;
 
-        let a3_1x = -r1y;
+        let a3_1x = zero - r1y;
         let a3_1y = r1x;
 
-        let a3_2x = -r2y;
+        let a3_2x = zero - r2y;
         let a3_2y = r2x;
 
         let t1_1 = cross(a2x, a2y, a1x, a1y) / dot(a2x, a2y, a3_1x, a3_1y);
@@ -671,8 +673,6 @@ pub mod simd {
         let t2_1 = dot(a1x, a1y, a3_1x, a3_1y) / dot(a2x, a2y, a3_1x, a3_1y);
         let t2_2 = dot(a1x, a1y, a3_2x, a3_2y) / dot(a2x, a2y, a3_2x, a3_2y);
 
-        let zero = f32x4::splat(0.0);
-        let one = f32x4::splat(1.0);
         let zero_i = i32x4::splat(0);
         let one_i = i32x4::splat(1);
 
