@@ -618,7 +618,7 @@ pub mod simd {
 
     #[inline(always)]
     fn cross(x1: f32x4, y1: f32x4, x2: f32x4, y2: f32x4) -> f32x4 {
-        x1 * x2 - y1 * y2
+        x1 * y2 - y1 * x2
     }
 
     #[inline(always)]
@@ -631,6 +631,7 @@ pub mod simd {
         )
     }
 
+    #[inline(always)]
     pub fn line_to_point_simd(
         px: f32x4, py: f32x4,
         vx: f32x4, vy: f32x4,
@@ -644,6 +645,7 @@ pub mod simd {
         dist_2(px, py, proj_x, proj_y)
     }
 
+    #[inline(always)]
     pub fn lines_touching_rays(
         px: f32x4, py: f32x4,
         r1x: f32x4, r1y: f32x4,
@@ -687,24 +689,5 @@ pub mod simd {
         let i_count_2 = mask_all_2.to_i().select(one_i, zero_i);
 
         (i_count_1, i_count_2)
-
-        /*
-        let ray_origin = self.0;
-        let ray_direction = self.1;
-        let point_1 = line.0;
-        let point_2 = line.1;
-
-        let v1 = ray_origin - point_1;
-        let v2 = point_2 - point_1;
-        let v3 = Vector {x: -ray_direction.y, y: ray_direction.x};
-
-        let t1 = v2.cross(&v1) / v2.dot(&v3);
-        let t2 = v1.dot(&v3) / v2.dot(&v3);
-
-        if t1 >= 0.0 && t2 >= 0.0 && t2 <= 1.0 {
-            true
-        } else {
-            false
-        }*/
     }
 }

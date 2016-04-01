@@ -539,29 +539,27 @@ impl Implicit for Polygon {
             let mut out_intersect_1 = out_intersect_1[0] + out_intersect_1[1] + out_intersect_1[2] + out_intersect_1[3];
             let mut out_intersect_2 = out_intersect_2[0] + out_intersect_2[1] + out_intersect_2[2] + out_intersect_2[3];
 
-            for line in &self.lines()[simd_used..] {
-                if ray_1.does_intersect_with_line(line) {
-                    out_intersect_1 += 1;
-                }
-                if ray_2.does_intersect_with_line(line) {
-                    out_intersect_2 += 1;
-                }
-            }
-
-            let inside = if out_intersect_1 % 2  == out_intersect_2 % 2 {
-//                println!("good");
-                out_intersect_1 % 2 == 0
-            } else {
-//                println!("recalculate");
+            fn intersection_count_dummy(ray: Ray, lines: &[Line]) -> i32 {
                 let mut hit_count = 0;
-                for line in &self.lines()[..] {
-                    if ray_3.does_intersect_with_line(line) {
+                for line in lines {
+                    if ray.does_intersect_with_line(line) {
                         hit_count += 1;
                     }
                 }
-                hit_count % 2 == 0
-            };
+                hit_count 
+            }
 
+            out_intersect_1 += intersection_count_dummy(ray_1, &self.lines()[simd_used..]);
+            out_intersect_2 += intersection_count_dummy(ray_2, &self.lines()[simd_used..]);
+
+            debug_assert_eq!(out_intersect_1, intersection_count_dummy(ray_1, self.lines()));
+            debug_assert_eq!(out_intersect_2, intersection_count_dummy(ray_2, self.lines()));
+
+            let inside = if out_intersect_1 % 2  == out_intersect_2 % 2 {
+                out_intersect_1 % 2 == 0
+            } else {
+                intersection_count_dummy(ray_3, self.lines()) % 2 == 0
+            };
 
             (min, inside)
         };
