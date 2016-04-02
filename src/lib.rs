@@ -552,8 +552,8 @@ impl Implicit for Polygon {
             out_intersect_1 += intersection_count_dummy(ray_1, &self.lines()[simd_used..]);
             out_intersect_2 += intersection_count_dummy(ray_2, &self.lines()[simd_used..]);
 
-            debug_assert_eq!(out_intersect_1, intersection_count_dummy(ray_1, self.lines()));
-            debug_assert_eq!(out_intersect_2, intersection_count_dummy(ray_2, self.lines()));
+            //debug_assert_eq!(out_intersect_1, intersection_count_dummy(ray_1, self.lines()));
+            //debug_assert_eq!(out_intersect_2, intersection_count_dummy(ray_2, self.lines()));
 
             let inside = if out_intersect_1 % 2  == out_intersect_2 % 2 {
                 out_intersect_1 % 2 == 0

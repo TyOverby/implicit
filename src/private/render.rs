@@ -351,74 +351,15 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32
     }
 
     if shape.follows_rules() {
-        ::flame::start("subdividing");
         subdivide(shape, bb, sample_dist, &mut out);
-        ::flame::end("subdividing");
     } else {
         sample_from_box(bb, sample_dist, &mut out);
     }
-
-    ::flame::start("remove overlapping");
-    out.sort_by(|a, b| {
-        match a.x.partial_cmp(&b.x) {
-            Some(a) => a,
-            None => Ordering::Equal
-        }
-    });
-    remove_similar(&mut out);
-
-    out.sort_by(|a, b| {
-        match a.y.partial_cmp(&b.y) {
-            Some(a) => a,
-            None => Ordering::Equal
-        }
-    });
-    remove_similar(&mut out);
-    ::flame::end("remove overlapping");
 
     // TODO: make this function return points
     flame::span_of("conversion", || out.into_iter().map(|p| p.into_tuple()).collect())
 }
 
-fn remove_similar(out: &mut Vec<Point>) {
-    let mut last = None;
-    let mut to_remove: Vec<usize> = vec![];
-
-    // Build up a list of indices to remove.
-    for (i, &pt) in out.iter().enumerate() {
-        if last.is_none() {
-            last = Some(pt);
-            continue;
-        }
-        let last_u = last.unwrap();
-        if pt.close_to(&last_u, 0.01) {
-            to_remove.push(i);
-        } 
-        last = Some(pt);
-    }
-
-    // Reverse the list so that we can "pop" from the front
-    to_remove.reverse();
-
-    // Drop all the removed indicies
-    let mut i = 0;
-    out.retain(|_| {
-        if to_remove.is_empty() {
-            return true;
-        }
-
-        let &last_idx = to_remove.last().unwrap();
-        let result = if last_idx == i {
-            to_remove.pop();
-            false
-        } else {
-            true
-        };
-
-        i += 1;
-        result
-    });
-}
 
 fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) {
     sample_dist.modify_bb(&mut bb);

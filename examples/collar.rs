@@ -198,4 +198,6 @@ fn main() {
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);
     pdf.write_out("collar.pdf");
+
+    //helper::display(1.0, vec![(front_collar.boxed(), helper::Display::Dots)]);//Vec<(SyncBox, Display)>) {
 }

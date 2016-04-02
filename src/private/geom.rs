@@ -31,6 +31,7 @@ pub struct Polygon {
     points: Vec<Point>,
     lines: Vec<Line>,
     segments: Vec<f32>,
+    seg_len: usize,
 }
 
 #[derive(PartialOrd, PartialEq, Copy, Clone, Debug)]
@@ -297,9 +298,9 @@ impl Rect {
 
     pub fn contains(&self, p: &Point) -> bool {
         p.x >= self.top_left.x &&
-        p.x <= self.bottom_right.x &&
+        p.x < self.bottom_right.x &&
         p.y >= self.top_left.y &&
-        p.y <= self.bottom_right.y
+        p.y < self.bottom_right.y
     }
 
     pub fn does_intersect(&self, other: &Rect) -> bool{
@@ -388,35 +389,37 @@ impl Polygon {
         let points: Vec<_> = i.collect();
         let lines  = Polygon::compute_lines(&points[..]);
 
-        let segments = {
+        let segments: Vec<_> = {
             let left_xs = lines.iter().map(|p| p.0.x);
             let left_ys = lines.iter().map(|p| p.0.y);
             let right_xs = lines.iter().map(|p| p.1.x);
             let right_ys = lines.iter().map(|p| p.1.y);
             left_xs.chain(left_ys).chain(right_xs).chain(right_ys)
         }.collect();
+        let seg_len = segments.len() / 4;
 
         Polygon {
             points: points,
             lines: lines,
             segments: segments,
+            seg_len: seg_len,
         }
     }
 
     pub fn left_xs(&self) -> &[f32] {
-        &self.segments[0 * self.points.len() .. 1 * self.points.len()]
+        &self.segments[0 * self.seg_len .. 1 * self.seg_len]
     }
 
     pub fn left_ys(&self) -> &[f32] {
-        &self.segments[1 * self.points.len() .. 2 * self.points.len()]
+        &self.segments[1 * self.seg_len .. 2 * self.seg_len]
     }
 
     pub fn right_xs(&self) -> &[f32] {
-        &self.segments[2 * self.points.len() .. 3 * self.points.len()]
+        &self.segments[2 * self.seg_len .. 3 * self.seg_len]
     }
 
     pub fn right_ys(&self) -> &[f32] {
-        &self.segments[3 * self.points.len() .. 4 * self.points.len()]
+        &self.segments[3 * self.seg_len .. 4 * self.seg_len]
     }
 
     // TODO: make this a lazy iterator.

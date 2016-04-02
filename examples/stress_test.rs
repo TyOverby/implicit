@@ -7,7 +7,7 @@ extern crate test;
 use implicit::*;
 use implicit::geom::*;
 
-const ITERS: u32 = 100;
+const ITERS: u32 = 1;
 const RESOLUTION: f32 = 1.0;
 
 fn main() {
@@ -28,6 +28,7 @@ fn main() {
         minimum = minimum.min(end);
         maximum = maximum.max(end);
     }
+    ::flame::dump_stdout();
 
     println!("avg: {}, min: {}, max: {}", total / ITERS as f32, minimum, maximum);
 }
