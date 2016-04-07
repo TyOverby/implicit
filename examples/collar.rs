@@ -199,5 +199,6 @@ fn main() {
     scene.render_all(&mut pdf);
     pdf.write_out("collar.pdf");
 
-    //helper::display(1.0, vec![(front_collar.boxed(), helper::Display::Dots)]);//Vec<(SyncBox, Display)>) {
+    display::display(scene);
+    //helper::display(1.0, vec![(front_collar.boxed(), helper::Display::Lines)]);
 }

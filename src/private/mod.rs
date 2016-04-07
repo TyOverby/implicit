@@ -7,6 +7,7 @@ pub mod render;
 pub mod svg;
 pub mod pdf;
 pub mod output_device;
+pub mod poly_group;
 
 pub use self::dash::*;
 pub use self::geom::*;

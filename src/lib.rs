@@ -14,7 +14,7 @@ mod scene;
 
 pub use private::render::{render, sampling_points, RenderMode, OutputMode};
 pub use private::geom;
-pub use private::quadtree::QuadTree;
+pub use private::quadtree::{Spatial, QuadTree};
 pub use private::output_device::OutputDevice;
 pub use scene::Scene;
 pub use private::svg::SvgWriter;

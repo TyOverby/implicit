@@ -437,6 +437,9 @@ impl Polygon {
     pub fn lines(&self) -> &[Line] {
         &self.lines
     }
+    pub fn points(&self) -> &[Point] {
+        &self.points
+    }
 }
 
 impl Vector {
