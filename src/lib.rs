@@ -12,7 +12,8 @@ extern crate simd;
 mod private;
 mod scene;
 
-pub use private::render::{render, sampling_points, RenderMode, OutputMode};
+pub use private::render::{render, RenderMode, OutputMode};
+pub use private::sample_points::sampling_points;
 pub use private::geom;
 pub use private::quadtree::{Spatial, QuadTree};
 pub use private::output_device::OutputDevice;

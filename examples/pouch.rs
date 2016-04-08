@@ -7,9 +7,9 @@ mod display;
 use implicit::*;
 use implicit::geom::*;
 
-const WIDTH: f32 = 20.0;
-const HEIGHT: f32 = 10.0;
-const DEPTH: f32 = 02.50;
+const WIDTH: f32 = 3.37;
+const HEIGHT: f32 = 2.12;
+const DEPTH: f32 = 0.50;
 
 fn panels() -> OrThese<Rectangle> {
     let flap = Rectangle::new(Rect::from_point_and_size(
@@ -74,10 +74,13 @@ fn main() {
     let gaps = gaps();
     let panels = panels.or(gaps.clone());
 
+
     scene.add_shape(&panels, RenderMode::Outline, Matrix::new().translate(WIDTH / 2.0 + DEPTH, 0.0));
     scene.add_shape(&gaps, RenderMode::BasicDashed(vec![0.5, 0.5]), Matrix::new().translate(WIDTH / 2.0 + DEPTH, 0.0));
 
-    let mut pdf = PdfWriter::new("in", (1.0 / 10.0) * 72.0);
+    let mut pdf = PdfWriter::new("in", 1.0 * 72.0);
     scene.render_all(&mut pdf);
     pdf.write_out("pouch.pdf");
+
+    helper::display(1.0, vec![(panels.boxed(), helper::Display::Dots)]);
 }

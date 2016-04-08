@@ -1,7 +1,15 @@
-use super::{simplify_line, connect_lines, Point, MarchResult, march, Rect, Line, A, B, C, D};
+use super::{
+    simplify_line,
+    connect_lines,
+    Point,
+    MarchResult,
+    march,
+    Line,
+    A, B, C, D,
+    sampling_points,
+};
 
 use ::Implicit;
-use std::cmp::{PartialOrd, Ordering};
 use itertools::Itertools;
 use crossbeam;
 use flame;
@@ -49,47 +57,10 @@ pub struct SegmentIter<'a> {
     last_points_pos: usize,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct SampleDist {
-    pub x_bump: f32,
-    pub y_bump: f32,
-}
-
 #[derive(Clone)]
 pub struct DashedData {
     sizes: Vec<u32>,
     points: Vec<Point>
-}
-
-impl SampleDist {
-    fn modify_bb(&self, bb: &mut Rect) {
-        let top_left = {
-            let Point{ x, y } = bb.top_left();
-            let (x, y) = self.floor(x, y);
-            Point{x: x, y: y}
-        };
-        let bottom_right = {
-            let Point { x, y } = bb.bottom_right();
-            let (x, y) = self.floor(x, y);
-            Point{x: x, y: y}
-        };
-
-        *bb = Rect::from_points(&top_left, &bottom_right);
-    }
-    fn floor(&self, x: f32, y: f32) -> (f32, f32){
-        let x = x - (x % self.x_bump);
-        let y = y - (y % self.y_bump);
-        (x, y)
-    }
-    fn bump_x(&self, x: f32) -> f32 {
-        x + self.x_bump
-    }
-    fn bump_y(&self, x: f32) -> f32 {
-        x + self.x_bump
-    }
-    fn max_bump(&self) -> f32 {
-        self.x_bump.max(self.y_bump)
-    }
 }
 
 impl <'a> Iterator for SegmentIter<'a> {
@@ -316,67 +287,6 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
     });
 
     lines
-}
-
-pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32)> {
-    let bb = shape.bounding_box().unwrap();
-    let b_dim = bb.width().max(bb.height());
-    let expand = b_dim * 0.10;
-    let bb = bb.expand(expand, expand, expand, expand);
-
-    assert!(!bb.is_null(), "shape is null");
-    let sample_dist = SampleDist {
-        x_bump: resolution,
-        y_bump: resolution,
-    };
-    let mut out = vec![];
-
-    fn subdivide<S: Implicit>(shape: &S, bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) {
-        let radius = bb.width().max(bb.height());
-        let sample = shape.sample(bb.midpoint()).abs();
-
-        if sample > radius {
-            return
-        }
-        if  radius < sample_dist.max_bump() * 10.0 || radius < 1.0 {
-            sample_from_box(bb, sample_dist, out);
-            return;
-        }
-
-        let q = bb.split_quad();
-        subdivide(shape, q[0], sample_dist, out);
-        subdivide(shape, q[1], sample_dist, out);
-        subdivide(shape, q[2], sample_dist, out);
-        subdivide(shape, q[3], sample_dist, out);
-    }
-
-    if shape.follows_rules() {
-        subdivide(shape, bb, sample_dist, &mut out);
-    } else {
-        sample_from_box(bb, sample_dist, &mut out);
-    }
-
-    // TODO: make this function return points
-    flame::span_of("conversion", || out.into_iter().map(|p| p.into_tuple()).collect())
-}
-
-
-fn sample_from_box(mut bb: Rect, sample_dist: SampleDist, out: &mut Vec<Point>) {
-    sample_dist.modify_bb(&mut bb);
-    let Point{mut x, mut y} = bb.top_left();
-    let x_orig = x;
-
-    loop {
-        let p = Point{x: x, y: y};
-        if bb.contains(&p) {
-            out.push(p);
-            x = sample_dist.bump_x(x);
-        } else {
-            x = x_orig;
-            y = sample_dist.bump_y(y);
-            if !bb.contains(&Point{x: x, y: y}) { break; }
-        }
-    }
 }
 
 fn correct_spin(points: &mut [Point]) {

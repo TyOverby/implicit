@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use ::geom::{Polygon, Line, Rect, Point, Vector};
 use ::Implicit;
 use ::{Spatial, QuadTree};
