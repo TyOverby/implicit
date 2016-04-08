@@ -8,12 +8,15 @@ use implicit::*;
 use implicit::geom::*;
 
 const ITERS: u32 = 1;
-const RESOLUTION: f32 = 1.0;
+
+/// Why do SCALE and RESOLUTION not cancel eachother out when increased at the same rate?
+const RESOLUTION: f32 = 5.0;
+const SCALE: f32 = 5.0;
 
 fn main() {
     let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 100.0};
     let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 50.0, y: 50.0 }));
-    let poly = ::flame::span_of("prep", || circle.or(square).smooth(10.0, RESOLUTION));
+    let poly = ::flame::span_of("prep", || circle.or(square).smooth(10.0, RESOLUTION).scale(SCALE, SCALE));
 
     let mut total = 0.0;
     let mut minimum = ::std::f32::INFINITY;

@@ -13,24 +13,24 @@ struct SampleDist {
     pub y_bump: f32,
 }
 
-enum PoorMansQuadTree {
+enum PmQuadTree {
     Node {
         bb: Rect,
-        children: [Option<Box<PoorMansQuadTree>>; 4],
+        children: [Option<Box<PmQuadTree>>; 4],
     },
     Leaf(Rect)
 }
 
-impl PoorMansQuadTree {
+impl PmQuadTree {
     fn could_contain(&self, point: Point) -> bool {
         match self {
-            &PoorMansQuadTree::Node { bb, .. } => bb.contains(&point),
-            &PoorMansQuadTree::Leaf(rect) => rect.contains(&point),
+            &PmQuadTree::Node { bb, .. } => bb.contains(&point),
+            &PmQuadTree::Leaf(rect) => rect.contains(&point),
         }
     }
     fn contains(&self, point: Point) -> bool {
         match self {
-            &PoorMansQuadTree::Node { ref bb, ref children } => {
+            &PmQuadTree::Node { ref bb, ref children } => {
                 if !bb.contains(&point) {
                     false
                 } else {
@@ -42,7 +42,7 @@ impl PoorMansQuadTree {
                     false
                 }
             }
-            &PoorMansQuadTree::Leaf(rect) => {
+            &PmQuadTree::Leaf(rect) => {
                 rect.contains(&point)
             }
         }
@@ -50,36 +50,36 @@ impl PoorMansQuadTree {
 
     fn is_leaf(&self) -> bool {
         match self {
-            &PoorMansQuadTree::Leaf(_) => true,
+            &PmQuadTree::Leaf(_) => true,
             _ => false
         }
     }
 
-    fn build<I: Implicit>(shape: &I, bb: Rect, sample_dist: SampleDist) -> Option<PoorMansQuadTree> {
+    fn build<I: Implicit>(shape: &I, bb: Rect, sample_dist: SampleDist) -> Option<PmQuadTree> {
         let radius = bb.width().max(bb.height());
         let sample = shape.sample(bb.midpoint()).abs();
 
         if sample > radius { return None; }
         if radius < sample_dist.max_bump() * 10.0 || radius < 1.0 {
-            return Some(PoorMansQuadTree::Leaf(bb));
+            return Some(PmQuadTree::Leaf(bb));
         }
 
         let q = bb.split_quad();
-        let a = PoorMansQuadTree::build(shape, q[0], sample_dist);
-        let b = PoorMansQuadTree::build(shape, q[1], sample_dist);
-        let c = PoorMansQuadTree::build(shape, q[2], sample_dist);
-        let d = PoorMansQuadTree::build(shape, q[3], sample_dist);
+        let a = PmQuadTree::build(shape, q[0], sample_dist);
+        let b = PmQuadTree::build(shape, q[1], sample_dist);
+        let c = PmQuadTree::build(shape, q[2], sample_dist);
+        let d = PmQuadTree::build(shape, q[3], sample_dist);
 
-        let a_leaf = a.as_ref().map(|pmqt| pmqt.is_leaf()).unwrap_or(false);
-        let b_leaf = b.as_ref().map(|pmqt| pmqt.is_leaf()).unwrap_or(false);
-        let c_leaf = c.as_ref().map(|pmqt| pmqt.is_leaf()).unwrap_or(false);
-        let d_leaf = d.as_ref().map(|pmqt| pmqt.is_leaf()).unwrap_or(false);
+        let a_leaf = a.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
+        let b_leaf = b.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
+        let c_leaf = c.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
+        let d_leaf = d.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
 
         if a_leaf && b_leaf && c_leaf && d_leaf {
-            return Some(PoorMansQuadTree::Leaf(bb));
+            return Some(PmQuadTree::Leaf(bb));
         }
 
-        return Some(PoorMansQuadTree::Node {
+        return Some(PmQuadTree::Node {
             bb: bb,
             children: [a.map(Box::new), b.map(Box::new), c.map(Box::new), d.map(Box::new)]
         })
@@ -126,7 +126,7 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32
 
     ::flame::start("build poor mans quad tree");
     let sample_dist = SampleDist { x_bump: resolution, y_bump: resolution };
-    let pmqt = PoorMansQuadTree::build(shape, bb, sample_dist).unwrap();
+    let pmqt = PmQuadTree::build(shape, bb, sample_dist).unwrap();
     ::flame::end("build poor mans quad tree");
 
     let mut out = vec![];
