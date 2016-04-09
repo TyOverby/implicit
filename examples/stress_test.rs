@@ -7,7 +7,7 @@ extern crate test;
 use implicit::*;
 use implicit::geom::*;
 
-const ITERS: u32 = 10;
+const ITERS: u32 = 100;
 
 /// Why do SCALE and RESOLUTION not cancel eachother out when increased at the same rate?
 const RESOLUTION: f32 = 1.0;

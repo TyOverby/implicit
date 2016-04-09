@@ -10,6 +10,7 @@ struct SampleDist {
     pub y_bump: f32,
 }
 
+#[derive(Debug)]
 enum PmQuadTree {
     Node {
         bb: Rect,
@@ -59,7 +60,7 @@ impl PmQuadTree {
         let sample = shape.sample(bb.midpoint()).abs();
 
         if sample > radius_max { return None; }
-        if radius_min < sample_dist.max_bump() * 2.0 {
+        if radius_min < sample_dist.max_bump() * 5.0 {
             return Some((Leaf(bb), true));
         }
 
@@ -82,6 +83,7 @@ impl PmQuadTree {
             (None, Some((b, _)), None, None) => return Some((b, false)),
             (None, None, Some((c, _)), None) => return Some((c, false)),
             (None, None, None, Some((d, _))) => return Some((d, false)),
+            (None, None, None, None) => return None,
             (a, b, c, d) => (a, b, c, d),
         };
 
@@ -147,6 +149,11 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32
         }
     }
     ::flame::end("filter points");
+
+    /*
+    println!("{:#?}", pmqt);
+    println!("{} sampling points", out.len());
+    */
 
     out
 }

@@ -11,7 +11,6 @@ use super::{
 
 use ::Implicit;
 use itertools::Itertools;
-use crossbeam;
 use flame;
 
 #[derive(Clone)]
@@ -205,75 +204,78 @@ where A: Implicit + Sync {
 }
 
 fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
-    // TODO: make a buffer here and unsafely write to it from the multiple threads
-    let chunks = sample_points.chunks(sample_points.len() / ::num_cpus::get());
-    let lines = crossbeam::scope(|scope| {
-        let mut joiners = vec![];
-
-        for chunk in chunks {
-            joiners.push(scope.spawn(move || {
-                let mut local_lines = vec![];
-
-                // Previously sampled points
-                let mut p_right_top: Option<(Point, f32)> = None;
-                let mut p_right_bot: Option<(Point, f32)> = None;
-
-                for &(sx, sy) in chunk {
-                    let p = Point{x: sx, y: sy};
-
-                    let sa = A * resolution + p;
-                    let sb = B * resolution + p;
-                    let sc = C * resolution + p;
-                    let sd = D * resolution + p;
-
-                    ::flame::start("sampling");
-                    let sra = match p_right_top {
-                        Some((pp, pv)) if pp.close_to(&sa, resolution) => {
-                            pv
-                        }
-                        _ => {
-                            shape.sample(sa)
-                        }
-                    };
-
-                    let srd = match p_right_bot {
-                        Some((pp, pv)) if pp.close_to(&sd, resolution) => {
-                            pv
-                        }
-                        _ => {
-                            shape.sample(sd)
-                        }
-                    };
-
-                    let srb = shape.sample(sb);
-                    let src = shape.sample(sc);
-                    ::flame::end("sampling");
-
-                    p_right_top = Some((sb, srb));
-                    p_right_bot = Some((sc, src));
-
-                    match march(sra, srb, src, srd, shape, p, resolution) {
-                        MarchResult::None => {},
-                        MarchResult::One(line) => local_lines.push(line),
-                        MarchResult::Two(line1, line2) => {
-                            local_lines.push(line1);
-                            local_lines.push(line2);
-                        }
-                        MarchResult::OneDebug(_) | MarchResult::Debug => { }
-                    }
-                }
-                local_lines
-            }));
+    fn divide<S: Implicit + Sync>(shape: &S, chunks: &[&[(f32, f32)]], resolution: f32) -> Vec<Line> {
+        if chunks.len() == 0 {
+            return vec![];
+        }
+        if chunks.len() == 1{
+            return sample_these(shape, chunks[0], resolution);
         }
 
-        let mut lines = vec![];
-        for joiner in joiners {
-            lines.append(&mut joiner.join());
-        }
-        lines
-    });
+        let (mut cur, mut rest) = ::rayon::join(
+            || sample_these(shape, chunks[0], resolution),
+            || divide(shape, &chunks[1..], resolution));
+        rest.append(&mut cur);
 
-    lines
+        rest
+    }
+
+    let chunks: Vec<_> = sample_points.chunks(sample_points.len() / ::num_cpus::get()).collect();
+    divide(shape, &chunks, resolution)
+}
+
+fn sample_these<S: Implicit>(shape: &S, chunk: &[(f32, f32)], resolution: f32) -> Vec<Line> {
+    let mut local_lines = vec![];
+
+    // Previously sampled points
+    let mut p_right_top: Option<(Point, f32)> = None;
+    let mut p_right_bot: Option<(Point, f32)> = None;
+
+    for &(sx, sy) in chunk {
+        let p = Point{x: sx, y: sy};
+
+        let sa = A * resolution + p;
+        let sb = B * resolution + p;
+        let sc = C * resolution + p;
+        let sd = D * resolution + p;
+
+        ::flame::start("sampling");
+        let sra = match p_right_top {
+            Some((pp, pv)) if pp.close_to(&sa, resolution) => {
+                pv
+            }
+            _ => {
+                shape.sample(sa)
+            }
+        };
+
+        let srd = match p_right_bot {
+            Some((pp, pv)) if pp.close_to(&sd, resolution) => {
+                pv
+            }
+            _ => {
+                shape.sample(sd)
+            }
+        };
+
+        let srb = shape.sample(sb);
+        let src = shape.sample(sc);
+        ::flame::end("sampling");
+
+        p_right_top = Some((sb, srb));
+        p_right_bot = Some((sc, src));
+
+        match march(sra, srb, src, srd, shape, p, resolution) {
+            MarchResult::None => {},
+            MarchResult::One(line) => local_lines.push(line),
+            MarchResult::Two(line1, line2) => {
+                local_lines.push(line1);
+                local_lines.push(line2);
+            }
+            MarchResult::OneDebug(_) | MarchResult::Debug => { }
+        }
+    }
+    local_lines
 }
 
 fn correct_spin(points: &mut [Point]) {

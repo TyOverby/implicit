@@ -9,9 +9,9 @@ description = "A library for playing with 2d implicit geometry"
 rand = "0.3"
 vecmath = "0.1.1"
 itertools = "0.4.11"
-crossbeam = "0.2.8"
 fnv = "1.0.2"
 num_cpus = "0.2.11"
+rayon = "0.3.1"
 
 [dependencies.flame]
 path = "../flame"

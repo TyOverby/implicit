@@ -3,11 +3,11 @@
 extern crate vecmath;
 extern crate rand;
 extern crate itertools;
-extern crate crossbeam;
 extern crate flame;
 extern crate fnv;
 extern crate num_cpus;
 extern crate simd;
+extern crate rayon;
 
 mod private;
 mod scene;
