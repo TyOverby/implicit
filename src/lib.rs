@@ -165,7 +165,7 @@ impl <A> SyncImplicit for A where A: Implicit + Sync {}
 
 #[derive(Clone, Debug)]
 pub struct PolyGroup {
-    polys: Vec<Polygon>
+    pub polys: Vec<Polygon>
 }
 
 #[derive(Copy, Clone, Debug)]

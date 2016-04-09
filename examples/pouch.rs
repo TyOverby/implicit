@@ -82,5 +82,7 @@ fn main() {
     scene.render_all(&mut pdf);
     pdf.write_out("pouch.pdf");
 
-    helper::display(1.0, vec![(panels.boxed(), helper::Display::Dots)]);
+    let panels = panels.boxed();
+
+    helper::display(1.0, vec![(panels.clone(), helper::Display::Dots), (panels, helper::Display::Lines)]);
 }

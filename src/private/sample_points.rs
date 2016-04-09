@@ -3,9 +3,6 @@ use super::{
     Rect,
 };
 use ::Implicit;
-use std::cmp::{PartialOrd, Ordering};
-use itertools::Itertools;
-use flame;
 
 #[derive(Copy, Clone, Debug)]
 struct SampleDist {
@@ -20,17 +17,18 @@ enum PmQuadTree {
     },
     Leaf(Rect)
 }
+use self::PmQuadTree::*;
 
 impl PmQuadTree {
     fn could_contain(&self, point: Point) -> bool {
         match self {
-            &PmQuadTree::Node { bb, .. } => bb.contains(&point),
-            &PmQuadTree::Leaf(rect) => rect.contains(&point),
+            &Node { bb, .. } => bb.contains(&point),
+            &Leaf(rect) => rect.contains(&point),
         }
     }
     fn contains(&self, point: Point) -> bool {
         match self {
-            &PmQuadTree::Node { ref bb, ref children } => {
+            &Node { ref bb, ref children } => {
                 if !bb.contains(&point) {
                     false
                 } else {
@@ -42,7 +40,7 @@ impl PmQuadTree {
                     false
                 }
             }
-            &PmQuadTree::Leaf(rect) => {
+            &Leaf(rect) => {
                 rect.contains(&point)
             }
         }
@@ -50,18 +48,19 @@ impl PmQuadTree {
 
     fn is_leaf(&self) -> bool {
         match self {
-            &PmQuadTree::Leaf(_) => true,
+            &Leaf(_) => true,
             _ => false
         }
     }
 
-    fn build<I: Implicit>(shape: &I, bb: Rect, sample_dist: SampleDist) -> Option<PmQuadTree> {
-        let radius = bb.width().max(bb.height());
+    fn build<I: Implicit>(shape: &I, bb: Rect, sample_dist: SampleDist) -> Option<(PmQuadTree, bool)> {
+        let radius_max = bb.width().max(bb.height());
+        let radius_min = bb.width().min(bb.height());
         let sample = shape.sample(bb.midpoint()).abs();
 
-        if sample > radius { return None; }
-        if radius < sample_dist.max_bump() * 10.0 || radius < 1.0 {
-            return Some(PmQuadTree::Leaf(bb));
+        if sample > radius_max { return None; }
+        if radius_min < sample_dist.max_bump() * 2.0 {
+            return Some((Leaf(bb), true));
         }
 
         let q = bb.split_quad();
@@ -70,19 +69,31 @@ impl PmQuadTree {
         let c = PmQuadTree::build(shape, q[2], sample_dist);
         let d = PmQuadTree::build(shape, q[3], sample_dist);
 
-        let a_leaf = a.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
-        let b_leaf = b.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
-        let c_leaf = c.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
-        let d_leaf = d.as_ref().map(PmQuadTree::is_leaf).unwrap_or(false);
+        let (a, b, c, d) = match (a, b, c, d) {
+            (Some((Leaf(_), true)), Some((Leaf(_), true)),
+             Some((Leaf(_), true)), Some((Leaf(_), true))) => return Some((Leaf(bb), true)),
 
-        if a_leaf && b_leaf && c_leaf && d_leaf {
-            return Some(PmQuadTree::Leaf(bb));
-        }
+            (Some((Leaf(a), true)), Some((Leaf(b), true)), None, None) => return Some((Leaf(a.union_with(&b)), false)),
+            (None, None, Some((Leaf(c), true)), Some((Leaf(d), true))) => return Some((Leaf(c.union_with(&d)), false)),
+            (Some((Leaf(a), true)), None, Some((Leaf(c), true)), None) => return Some((Leaf(a.union_with(&c)), false)),
+            (None, Some((Leaf(b), true)), None, Some((Leaf(d), true))) => return Some((Leaf(b.union_with(&d)), false)),
 
-        return Some(PmQuadTree::Node {
+            (Some((a, _)), None, None, None) => return Some((a, false)),
+            (None, Some((b, _)), None, None) => return Some((b, false)),
+            (None, None, Some((c, _)), None) => return Some((c, false)),
+            (None, None, None, Some((d, _))) => return Some((d, false)),
+            (a, b, c, d) => (a, b, c, d),
+        };
+
+        return Some((Node {
             bb: bb,
-            children: [a.map(Box::new), b.map(Box::new), c.map(Box::new), d.map(Box::new)]
-        })
+            children: [
+                a.map(|p| Box::new(p.0)),
+                b.map(|p| Box::new(p.0)),
+                c.map(|p| Box::new(p.0)),
+                d.map(|p| Box::new(p.0)),
+            ]
+        }, false))
     }
 }
 
@@ -120,13 +131,12 @@ impl SampleDist {
 
 pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32)> {
     let bb = shape.bounding_box().unwrap();
-    let b_dim = bb.width().max(bb.height());
-    let expand = b_dim * 0.10;
+    let expand = resolution * 2.0;
     let bb = bb.expand(expand, expand, expand, expand);
 
     ::flame::start("build poor mans quad tree");
     let sample_dist = SampleDist { x_bump: resolution, y_bump: resolution };
-    let pmqt = PmQuadTree::build(shape, bb, sample_dist).unwrap();
+    let (pmqt, _) = PmQuadTree::build(shape, bb, sample_dist).unwrap();
     ::flame::end("build poor mans quad tree");
 
     let mut out = vec![];

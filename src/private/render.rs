@@ -183,11 +183,6 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
 
 pub fn render<A>(object: A, rm: &RenderMode, resolution: f32, simplify: bool) -> OutputMode
 where A: Implicit + Sync {
-
-    const FACTOR: f32 = 1.0;
-//    let object = Implicit::scale(object, FACTOR, FACTOR);
-//    let resolution = resolution * FACTOR;
-
     flame::start("collect sampling points");
     let sample_points = sampling_points(&object, resolution);
     flame::end("collect sampling points");
@@ -202,14 +197,6 @@ where A: Implicit + Sync {
         connected_lines = connected_lines.into_iter().map(simplify_line).collect();
     }
     flame::end("connect lines");
-
-    /*
-    for group in &mut connected_lines {
-        for &mut Point { ref mut x, ref mut y } in group.iter_mut() {
-            *x /= FACTOR;
-            *y /= FACTOR;
-        }
-    }*/
 
     flame::start("transform lines");
     let r = transform(connected_lines, rm);
