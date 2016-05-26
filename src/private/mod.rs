@@ -9,6 +9,7 @@ pub mod pdf;
 pub mod output_device;
 pub mod poly_group;
 pub mod sample_points;
+pub mod bitmap;
 
 pub use self::dash::*;
 pub use self::geom::*;
@@ -20,3 +21,4 @@ pub use self::output_device::*;
 pub use self::svg::*;
 pub use self::pdf::*;
 pub use self::sample_points::*;
+pub use self::bitmap::*;

@@ -48,7 +48,7 @@ impl ImplicitCanvas {
     }
 
     fn draw_dots(&self, shape: &SyncBox, frame: &mut Frame) {
-        for (sx, sy) in sampling_points(shape, self.resolution) {
+        for Point{x: sx, y: sy} in sampling_points(shape, self.resolution) {
             let (_, _, ds) = self.sample_to_draw((sx, sy));
             if ds > 5.0 {
                 let (dpx, dpy, _) = self.sample_to_draw((sx, sy));
@@ -62,7 +62,7 @@ impl ImplicitCanvas {
     }
 
     fn render_pix(&self, shape: &SyncBox, frame: &mut Frame) {
-        for (sx, sy) in sampling_points(shape, self.resolution) {
+        for Point{x: sx, y: sy} in sampling_points(shape, self.resolution) {
             let (dx, dy, ds) = self.sample_to_draw((sx, sy));
             let sample = shape.sample(Point { x: sx, y: sy } );
 

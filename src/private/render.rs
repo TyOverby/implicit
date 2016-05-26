@@ -182,6 +182,8 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
 
 pub fn render<A>(object: A, rm: &RenderMode, resolution: f32, simplify: bool) -> OutputMode
 where A: Implicit + Sync {
+    flame::start("render");
+
     flame::start("collect sampling points");
     let sample_points = sampling_points(&object, resolution);
     flame::end("collect sampling points");
@@ -200,11 +202,13 @@ where A: Implicit + Sync {
     flame::start("transform lines");
     let r = transform(connected_lines, rm);
     flame::end("transform lines");
+
+    flame::end("render");
     r
 }
 
-fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f32)>, shape: &S) -> Vec<Line> {
-    fn divide<S: Implicit + Sync>(shape: &S, chunks: &[&[(f32, f32)]], resolution: f32) -> Vec<Line> {
+fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<Point>, shape: &S) -> Vec<Line> {
+    fn divide<S: Implicit + Sync>(shape: &S, chunks: &[&[Point]], resolution: f32) -> Vec<Line> {
         if chunks.len() == 0 {
             return vec![];
         }
@@ -224,16 +228,14 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<(f32, f3
     divide(shape, &chunks, resolution)
 }
 
-fn sample_these<S: Implicit>(shape: &S, chunk: &[(f32, f32)], resolution: f32) -> Vec<Line> {
+fn sample_these<S: Implicit>(shape: &S, chunk: &[Point], resolution: f32) -> Vec<Line> {
     let mut local_lines = vec![];
 
     // Previously sampled points
     let mut p_right_top: Option<(Point, f32)> = None;
     let mut p_right_bot: Option<(Point, f32)> = None;
 
-    for &(sx, sy) in chunk {
-        let p = Point{x: sx, y: sy};
-
+    for &p in chunk {
         let sa = A * resolution + p;
         let sb = B * resolution + p;
         let sc = C * resolution + p;

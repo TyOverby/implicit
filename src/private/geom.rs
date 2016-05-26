@@ -221,19 +221,19 @@ impl Rect {
         self.bottom_right.y - self.top_left.y
     }
 
-    fn left(&self) -> f32 {
+    pub fn left(&self) -> f32 {
         self.top_left.x
     }
 
-    fn right(&self) -> f32 {
+    pub fn right(&self) -> f32 {
         self.bottom_right.x
     }
 
-    fn top(&self) -> f32 {
+    pub fn top(&self) -> f32 {
         self.top_left.y
     }
 
-    fn bottom(&self) -> f32 {
+    pub fn bottom(&self) -> f32 {
         self.bottom_right.y
     }
 

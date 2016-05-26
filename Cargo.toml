@@ -14,8 +14,7 @@ num_cpus = "0.2.11"
 rayon = "0.3.1"
 
 [dependencies.flame]
-path = "../flame"
-#flame = "0.1.2"
+version = "0.1.6"
 
 [dependencies.simd]
 git = "https://github.com/rekka/simd.git"

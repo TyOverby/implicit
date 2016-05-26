@@ -1,5 +1,6 @@
 extern crate lux;
 extern crate implicit;
+extern crate flame;
 
 mod helper;
 mod display;
@@ -173,9 +174,13 @@ fn main() {
     let offset_850_right = offset_850.translate(400.0, 0.0);
     let center = front_collar.bounding_box().unwrap().midpoint();
 
+    ::flame::start("entire thing");
     let f_c = scene.add_shape(&front_collar, RenderMode::Outline, offset_50);
     let f_o = scene.add_shape(&front_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_50);
     scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_50);
+    ::flame::end("entire thing");
+    ::flame::dump_html(&mut ::std::fs::File::create("flamegraph.html").unwrap()).unwrap();
+    panic!();
 
     scene.add_again(f_c, offset_250.mirror_horizontal(center.x));
     scene.add_again(f_o, offset_250.mirror_horizontal(center.x));
@@ -195,10 +200,14 @@ fn main() {
     scene.add_again(h_a, offset_850_right);
     scene.add_again(h_a_s, offset_850_right);
 
+    /*
+    scene.render_all(&mut NullDevice);
+
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);
     pdf.write_out("collar.pdf");
+    */
 
-    display::display(scene);
-    //helper::display(1.0, vec![(front_collar.boxed(), helper::Display::Lines)]);
+//    display::display(scene);
+    helper::display(1.0, vec![(front_collar.boxed(), helper::Display::Dots)]);
 }

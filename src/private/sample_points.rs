@@ -1,8 +1,9 @@
 use super::{
     Point,
     Rect,
+    Bitmap,
 };
-use ::Implicit;
+use ::{Implicit, QuadTree};
 
 #[derive(Copy, Clone, Debug)]
 struct SampleDist {
@@ -27,6 +28,8 @@ impl PmQuadTree {
             &Leaf(rect) => rect.contains(&point),
         }
     }
+
+    #[inline(always)]
     fn contains(&self, point: Point) -> bool {
         match self {
             &Node { ref bb, ref children } => {
@@ -53,14 +56,18 @@ impl PmQuadTree {
             _ => false
         }
     }
+    fn is_node(&self) -> bool {
+        !self.is_leaf()
+    }
 
     fn build<I: Implicit>(shape: &I, bb: Rect, sample_dist: SampleDist) -> Option<(PmQuadTree, bool)> {
         let radius_max = bb.width().max(bb.height());
         let radius_min = bb.width().min(bb.height());
         let sample = shape.sample(bb.midpoint()).abs();
 
-        if sample > radius_max { return None; }
-        if radius_min < sample_dist.max_bump() * 5.0 {
+        if sample > radius_max {
+            return None;
+        } else if radius_min < sample_dist.max_bump() * 5.0 {
             return Some((Leaf(bb), true));
         }
 
@@ -131,7 +138,21 @@ impl SampleDist {
 }
 
 
-pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32)> {
+pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
+    fn sample_with_pmqt(rect: Rect, sample_dist: SampleDist, pmqt: &PmQuadTree) -> (Vec<Point>, Vec<Point>) {
+        let mut out_uncontested = vec![];
+        let mut out_contested = vec![];
+        for (p, c) in sample_from_box(rect, sample_dist) {
+            match (pmqt.contains(p), c) {
+                (true, true) => out_uncontested.push(p),
+                (true, false) => out_contested.push(p),
+                (false, _) => {}
+            }
+        }
+
+        (out_uncontested, out_contested)
+    }
+
     let bb = shape.bounding_box().unwrap();
     let expand = resolution * 2.0;
     let bb = bb.expand(expand, expand, expand, expand);
@@ -141,12 +162,28 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<(f32, f32
     let (pmqt, _) = PmQuadTree::build(shape, bb, sample_dist).unwrap();
     ::flame::end("build poor mans quad tree");
 
+    ::flame::start("build bitmap");
+    let bitmap = Bitmap::new(shape, sample_dist.max_bump() * 5.0);
+    println!("bitmap size: {:?}", bitmap.size());
+    ::flame::end("build bitmap");
+
     let mut out = vec![];
+    let mut to_filter = vec![];
+    ::flame::start("sample pmqt");
+    for &bb in &bb.split_quad() {
+        let (mut uncontested, mut contested) = sample_with_pmqt(bb, sample_dist, &pmqt);
+        out.append(&mut uncontested);
+        to_filter.append(&mut contested);
+    }
+    ::flame::end("sample pmqt");
+
     ::flame::start("filter points");
-    for p in sample_from_box(bb, sample_dist) {
-        if pmqt.contains(p) {
-            out.push((p.x, p.y));
-        }
+    let mut quadtree = QuadTree::new(bb, false,  5, 20, 5);
+    for contested in to_filter {
+        quadtree.insert(contested);
+    }
+    for (_, &(ok, _)) in quadtree.iter() {
+        out.push(ok);
     }
     ::flame::end("filter points");
 
@@ -167,7 +204,8 @@ fn sample_from_box(mut bb: Rect, sample_dist: SampleDist) -> BoxSampler {
         y: y,
         bb: bb,
         x_orig: x_orig,
-        sample_dist: sample_dist
+        sample_dist: sample_dist,
+        on_top: true,
     }
 }
 
@@ -177,18 +215,25 @@ struct BoxSampler {
     bb: Rect,
     x_orig: f32,
     sample_dist: SampleDist,
+    on_top: bool,
 }
 
 impl Iterator for BoxSampler {
-    type Item = Point;
-    fn next(&mut self) -> Option<Point> {
+    type Item = (Point, bool);
+    fn next(&mut self) -> Option<(Point, bool)> {
         let p = Point{x: self.x, y: self.y};
+        let on_left = p.x == self.x_orig;
+        let on_right = self.sample_dist.bump_x(self.x) > self.bb.right();
+        let on_top = self.on_top;
+        let on_bottom = self.sample_dist.bump_y(self.y) > self.bb.bottom();
+
         if self.bb.contains(&p) {
             self.x = self.sample_dist.bump_x(self.x);
-            Some(p)
+            Some((p, !(on_left || on_right || on_top || on_bottom)))
         } else {
             self.x = self.x_orig;
             self.y = self.sample_dist.bump_y(self.y);
+            self.on_top = false;
             if !self.bb.contains(&Point{x: self.x, y: self.y}) {
                 None
             } else {

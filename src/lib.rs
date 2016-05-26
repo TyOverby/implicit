@@ -16,7 +16,7 @@ pub use private::render::{render, RenderMode, OutputMode};
 pub use private::sample_points::sampling_points;
 pub use private::geom;
 pub use private::quadtree::{Spatial, QuadTree};
-pub use private::output_device::OutputDevice;
+pub use private::output_device::{OutputDevice, NullDevice};
 pub use scene::Scene;
 pub use private::svg::SvgWriter;
 pub use private::pdf::PdfWriter;
