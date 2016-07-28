@@ -104,8 +104,10 @@ impl <T> QuadTree<T> {
         let item_id = ItemId(*id);
         *id += 1;
 
-        elements.insert(item_id, (t, aabb));
-        root.insert(item_id, aabb, config);
+        if root.insert(item_id, aabb, config) {
+            elements.insert(item_id, (t, aabb));
+        }
+
         item_id
     }
 
@@ -196,23 +198,28 @@ impl QuadNode {
         }
     }
 
-    fn insert(&mut self, item_id: ItemId, item_aabb: Rect, config: &QuadTreeConfig) {
+    fn insert(&mut self, item_id: ItemId, item_aabb: Rect, config: &QuadTreeConfig) -> bool {
         let mut into = None;
+        let mut did_insert = false;
         match self {
             &mut QuadNode::Branch { ref aabb, ref mut in_all, ref mut children, ref mut element_count, .. } => {
                 if item_aabb.contains(&aabb.midpoint()) {
                     // Only insert if there isn't another item with a very similar aabb.
                     if config.allow_duplicates || !in_all.iter().any(|&(_, ref e_bb)| e_bb.close_to(&item_aabb, EPSILON)) {
                         in_all.push((item_id, item_aabb));
+                        did_insert = true;
+                        *element_count += 1;
                     } 
                 } else {
                     for &mut (ref aabb, ref mut child) in children {
                         if aabb.does_intersect(&item_aabb) {
-                            child.insert(item_id, item_aabb, config);
+                            if child.insert(item_id, item_aabb, config) {
+                                *element_count += 1;
+                                did_insert = true;
+                            }
                         }
                     }
                 }
-                *element_count += 1;
             }
 
             &mut QuadNode::Leaf { ref aabb, ref mut elements, ref depth } => {
@@ -221,6 +228,7 @@ impl QuadNode {
                     let mut extracted_children = Vec::new();
                     ::std::mem::swap(&mut extracted_children, elements);
                     extracted_children.push((item_id, item_aabb));
+                    did_insert = true;
 
                     let split = aabb.split_quad();
                     into = Some((extracted_children, QuadNode::Branch {
@@ -238,6 +246,7 @@ impl QuadNode {
                 } else {
                     if config.allow_duplicates || !elements.iter().any(|&(_, ref e_bb)| e_bb.close_to(&item_aabb, EPSILON)) {
                         elements.push((item_id, item_aabb));
+                        did_insert = true;
                     } 
                 }
             }
@@ -252,6 +261,8 @@ impl QuadNode {
                 self.insert(child_id, child_aabb, config);
             }
         }
+
+        did_insert
     }
 
     fn remove(&mut self, item_id: ItemId, item_aabb: Rect, config: &QuadTreeConfig) -> bool {
@@ -346,4 +357,17 @@ impl Spatial for Line {
     fn aabb(&self) -> Rect {
         Rect::from_points(&self.0, &self.1)
     }
+}
+
+#[test]
+fn similar_points() {
+    let mut quad_tree = QuadTree::new(
+        Rect::centered_with_radius(&Point { x: 0.0, y: 0.0 }, 10.0),
+        false,
+        1, 5, 2);
+
+    let p = Point{ x: 0.0, y: 0.0 };
+    quad_tree.insert(p);
+    quad_tree.insert(p);
+    assert_eq!(quad_tree.elements.len(), 1);
 }

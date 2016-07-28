@@ -1,4 +1,4 @@
-use ::{OutputMode, RenderMode, SyncImplicit, Implicit, render, OutputDevice};
+use ::{OutputMode, RenderMode, SyncImplicit, render, OutputDevice};
 use ::geom::{Point, Rect, Matrix};
 
 pub struct Scene {

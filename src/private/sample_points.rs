@@ -178,31 +178,22 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
             (out_uncontested, out_contested)
         }
 
-        let quadrants = rect.split_quad();
-        let a = quadrants[0];
-        let b = quadrants[1];
-        let c = quadrants[2];
-        let d = quadrants[3];
 
-        let ((mut u1, mut c1), (mut u2, mut c2)) = ::rayon::join(move || {
+        fn parallel(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap, thread_count: u32, target_threads: u32) -> (Vec<Point>, Vec<Point>) {
+            if thread_count >= target_threads {
+                return real_sample_with_bitmap(rect, sample_dist, bitmap);
+            }
+
+            let (top, bot) = rect.split_hori();
             let ((mut u1, mut c1), (mut u2, mut c2)) =
-                ::rayon::join(move || real_sample_with_bitmap(a, sample_dist, bitmap),
-                              move || real_sample_with_bitmap(b, sample_dist, bitmap));
+                ::rayon::join(move || parallel(top, sample_dist, bitmap, thread_count * 2, target_threads),
+                              move || parallel(bot, sample_dist, bitmap, thread_count * 2, target_threads));
             u1.append(&mut u2);
             c1.append(&mut c2);
             (u1, c1)
-        }, move || {
-            let ((mut u1, mut c1), (mut u2, mut c2)) =
-                ::rayon::join(move || real_sample_with_bitmap(c, sample_dist, bitmap),
-                              move || real_sample_with_bitmap(d, sample_dist, bitmap));
-            u1.append(&mut u2);
-            c1.append(&mut c2);
-            (u1, c1)
-        });
+        }
 
-        u1.append(&mut u2);
-        c1.append(&mut c2);
-        (u1, c1)
+        parallel(rect, sample_dist, bitmap, 1, 7)
     }
 
     let bb = shape.bounding_box().unwrap();
@@ -231,11 +222,6 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
         out.push(ok);
     }
     ::flame::end("filter points");
-
-    /*
-    println!("{:#?}", pmqt);
-    println!("{} sampling points", out.len());
-    */
 
     out
 }
@@ -268,9 +254,9 @@ impl Iterator for BoxSampler {
     fn next(&mut self) -> Option<(Point, bool)> {
         let p = Point{x: self.x, y: self.y};
         let on_left = p.x == self.x_orig;
-        let on_right = self.sample_dist.bump_x(self.x) > self.bb.right();
+        let on_right = self.sample_dist.bump_x(self.x) >= self.bb.right();
         let on_top = self.on_top;
-        let on_bottom = self.sample_dist.bump_y(self.y) > self.bb.bottom();
+        let on_bottom = self.sample_dist.bump_y(self.y) >= self.bb.bottom();
 
         if self.bb.contains(&p) {
             self.x = self.sample_dist.bump_x(self.x);

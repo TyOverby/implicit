@@ -352,6 +352,24 @@ impl Rect {
         self.top_left() + half
     }
 
+    pub fn split_vert(&self) -> (Rect, Rect) {
+        let half_size = Vector { x: self.width() / 2.0, y: self.height()};
+        let half_offset = Vector { x: self.width() / 2.0, y: 0.0};
+        (
+            Rect::from_point_and_size(&self.top_left, &half_size),
+            Rect::from_point_and_size(&(self.top_left + half_offset), &half_size),
+        )
+    }
+
+    pub fn split_hori(&self) -> (Rect, Rect) {
+        let half_size = Vector { x: self.width(), y: self.height() / 2.0};
+        let half_offset = Vector { x: 0.0, y: self.height() / 2.0};
+        (
+            Rect::from_point_and_size(&self.top_left, &half_size),
+            Rect::from_point_and_size(&(self.top_left + half_offset), &half_size),
+        )
+    }
+
     pub fn split_quad(&self) -> [Rect; 4] {
         let half = Vector { x: self.width() / 2.0, y: self.height() / 2.0 };
         [
