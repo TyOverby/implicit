@@ -44,7 +44,12 @@ impl Bitmap {
     }
 
     pub fn get(&self, x: usize, y: usize) -> f32 {
-        self.data[x + y * self.width]
+       
+        unsafe { 
+            *self.data.get_unchecked(x + y * self.width)
+        }
+        
+        //self.data[x + y * self.width]
     }
 
     pub fn size(&self) -> (usize, usize) {

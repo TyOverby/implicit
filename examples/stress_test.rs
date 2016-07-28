@@ -8,7 +8,7 @@ use implicit::*;
 use implicit::geom::*;
 use std::fs::File;
 
-const ITERS: usize = 1;
+const ITERS: usize = 100;
 
 /// Why do SCALE and RESOLUTION not cancel eachother out when increased at the same rate?
 const RESOLUTION: f32 = 1.0;
