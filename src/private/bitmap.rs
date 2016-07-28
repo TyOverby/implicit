@@ -11,13 +11,14 @@ pub struct Bitmap {
 
 impl Bitmap {
     pub fn new<I: Implicit>(shape: &I, resolution: f32) -> Bitmap {
+        assert!(resolution > 0.0);
         let bb = shape.bounding_box().unwrap();
         let offset = (bb.top_left().x, bb.top_left().y);
 
-        let min_x = bb.top_left().x.floor();
-        let min_y = bb.top_left().y.floor();
-        let max_x = bb.bottom_right().x.ceil();
-        let max_y = bb.bottom_right().y.ceil();
+        let min_x = (bb.top_left().x - resolution).floor();
+        let min_y = (bb.top_left().y - resolution).floor();
+        let max_x = (bb.bottom_right().x + resolution).ceil();
+        let max_y = (bb.bottom_right().y + resolution).ceil();
 
         let rect = Rect::from_points(&Point{x: min_x, y: min_y}, &Point{x: max_x, y: max_y});
 
@@ -27,7 +28,9 @@ impl Bitmap {
         let mut data = vec![0.0; width * height];
         for y in 0 .. height {
             for x in 0 .. width {
-                data[ x + y * width] = shape.sample(Point {x: x as f32, y: y as f32});
+                let (sx, sy) = (x as f32 * resolution + offset.0, y as f32 * resolution + offset.1);
+                let sample = shape.sample(Point {x: sx, y: sy});
+                data[x + y * width] = sample;
             }
         }
 
@@ -50,6 +53,12 @@ impl Bitmap {
 
     pub fn sample<F>(&self, x: f32, y: f32, func: F) -> f32
     where F: FnOnce(f32, f32, f32, f32) -> f32 {
+        let x = (x - self.offset.0) / self.resolution;
+        let y = (y - self.offset.1) / self.resolution;
+
+        let x = x.max(0.0).min((self.width -1) as f32);
+        let y = y.max(0.0).min((self.height -1) as f32);
+
         let x_low = x.floor();
         // let x_low_err = x - x_low;
         let x_low = x_low as usize;

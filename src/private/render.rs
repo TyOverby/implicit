@@ -212,7 +212,7 @@ fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<Point>, 
         if chunks.len() == 0 {
             return vec![];
         }
-        if chunks.len() == 1{
+        if chunks.len() == 1 {
             return sample_these(shape, chunks[0], resolution);
         }
 

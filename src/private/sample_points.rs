@@ -153,13 +153,37 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
         (out_uncontested, out_contested)
     }
 
+    fn sample_with_bitmap(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap) -> (Vec<Point>, Vec<Point>) {
+        let mut out_uncontested = vec![];
+        let mut out_contested = vec![];
+        for (p, c) in sample_from_box(rect, sample_dist) {
+            let Point{x, y} = p;
+            let sample = bitmap.sample(x, y, |a, b, c, d| (a.abs()).min(b.abs()).min(c.abs()).min(d.abs()));
+
+            let cmp = sample_dist.max_bump() * 5.0;
+            let bll = sample < cmp;
+
+            match (bll, c) {
+                (true, true) => {
+                    out_uncontested.push(p);
+                }
+                (true, false) =>  {
+                    out_contested.push(p);
+                }
+                (false, _) => {}
+            }
+        }
+
+        (out_uncontested, out_contested)
+    }
+
     let bb = shape.bounding_box().unwrap();
     let expand = resolution * 2.0;
     let bb = bb.expand(expand, expand, expand, expand);
 
     ::flame::start("build poor mans quad tree");
     let sample_dist = SampleDist { x_bump: resolution, y_bump: resolution };
-    let (pmqt, _) = PmQuadTree::build(shape, bb, sample_dist).unwrap();
+    //let (pmqt, _) = PmQuadTree::build(shape, bb, sample_dist).unwrap();
     ::flame::end("build poor mans quad tree");
 
     ::flame::start("build bitmap");
@@ -167,15 +191,10 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
     println!("bitmap size: {:?}", bitmap.size());
     ::flame::end("build bitmap");
 
-    let mut out = vec![];
-    let mut to_filter = vec![];
-    ::flame::start("sample pmqt");
-    for &bb in &bb.split_quad() {
-        let (mut uncontested, mut contested) = sample_with_pmqt(bb, sample_dist, &pmqt);
-        out.append(&mut uncontested);
-        to_filter.append(&mut contested);
-    }
-    ::flame::end("sample pmqt");
+    ::flame::start("filter sample with bitmap");
+    let (mut out, to_filter) = sample_with_bitmap(bb, sample_dist, &bitmap);
+    println!("out: {}, to_filter: {}", out.len(), to_filter.len());
+    ::flame::end("filter sample with bitmap");
 
     ::flame::start("filter points");
     let mut quadtree = QuadTree::new(bb, false,  5, 20, 5);
