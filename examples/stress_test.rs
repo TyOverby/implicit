@@ -6,16 +6,17 @@ extern crate test;
 
 use implicit::*;
 use implicit::geom::*;
+use std::fs::File;
 
-const ITERS: u32 = 1;
+const ITERS: usize = 1;
 
 /// Why do SCALE and RESOLUTION not cancel eachother out when increased at the same rate?
 const RESOLUTION: f32 = 1.0;
 const SCALE: f32 = RESOLUTION;
 
 fn main() {
-    let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 100.0};
-    let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 50.0, y: 50.0 }));
+    let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 500.0};
+    let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 250.0, y: 250.0 }));
     let poly = ::flame::span_of("prep", || circle.or(square).smooth(10.0, RESOLUTION));
     println!("{} lines", poly.target.polys[0].lines().len());
     let poly = poly.scale(SCALE, SCALE);
@@ -23,7 +24,8 @@ fn main() {
     let mut total = 0.0;
     let mut minimum = ::std::f32::INFINITY;
     let mut maximum = -::std::f32::INFINITY;
-    for _ in 0 .. ITERS {
+    let mut min_index = 0;
+    for i in 0 .. ITERS {
         flame::start("real deal");
         let a = render(poly.clone(), &RenderMode::Outline, RESOLUTION, true);
         test::black_box(a);
@@ -32,8 +34,13 @@ fn main() {
         total += end;
         minimum = minimum.min(end);
         maximum = maximum.max(end);
+        min_index = i;
+        flame::next_frame();
     }
-    ::flame::dump_stdout();
-
+    //::flame::dump_stdout();
+    ::flame::dump_html(&mut File::create("./flamegraph.html").unwrap());
+    let frames = ::flame::frames();
+    let span = &frames[min_index];
+    println!("{}", span.roots[0].into_json_string());
     println!("avg: {}, min: {}, max: {}", total / ITERS as f32, minimum, maximum);
 }

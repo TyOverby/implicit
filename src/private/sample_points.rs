@@ -154,46 +154,72 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
     }
 
     fn sample_with_bitmap(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap) -> (Vec<Point>, Vec<Point>) {
-        let mut out_uncontested = vec![];
-        let mut out_contested = vec![];
-        for (p, c) in sample_from_box(rect, sample_dist) {
-            let Point{x, y} = p;
-            let sample = bitmap.sample(x, y, |a, b, c, d| (a.abs()).min(b.abs()).min(c.abs()).min(d.abs()));
+        fn real_sample_with_bitmap(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap) -> (Vec<Point>, Vec<Point>) {
+            let mut out_uncontested = vec![];
+            let mut out_contested = vec![];
+            for (p, c) in sample_from_box(rect, sample_dist) {
+                let Point{x, y} = p;
+                let sample = bitmap.sample(x, y, |a, b, c, d| (a.abs()).min(b.abs()).min(c.abs()).min(d.abs()));
 
-            let cmp = sample_dist.max_bump() * 5.0;
-            let bll = sample < cmp;
+                let cmp = sample_dist.max_bump() * 5.0;
+                let bll = sample < cmp;
 
-            match (bll, c) {
-                (true, true) => {
-                    out_uncontested.push(p);
+                match (bll, c) {
+                    (true, true) => {
+                        out_uncontested.push(p);
+                    }
+                    (true, false) =>  {
+                        out_contested.push(p);
+                    }
+                    (false, _) => {}
                 }
-                (true, false) =>  {
-                    out_contested.push(p);
-                }
-                (false, _) => {}
             }
+
+            (out_uncontested, out_contested)
         }
 
-        (out_uncontested, out_contested)
+        let quadrants = rect.split_quad();
+        let a = quadrants[0];
+        let b = quadrants[1];
+        let c = quadrants[2];
+        let d = quadrants[3];
+
+        let ((mut u1, mut c1), (mut u2, mut c2)) = ::rayon::join(move || {
+            let ((mut u1, mut c1), (mut u2, mut c2)) =
+                ::rayon::join(move || real_sample_with_bitmap(a, sample_dist, bitmap),
+                              move || real_sample_with_bitmap(b, sample_dist, bitmap));
+            u1.append(&mut u2);
+            c1.append(&mut c2);
+            (u1, c1)
+        }, move || {
+            let ((mut u1, mut c1), (mut u2, mut c2)) =
+                ::rayon::join(move || real_sample_with_bitmap(c, sample_dist, bitmap),
+                              move || real_sample_with_bitmap(d, sample_dist, bitmap));
+            u1.append(&mut u2);
+            c1.append(&mut c2);
+            (u1, c1)
+        });
+
+        u1.append(&mut u2);
+        c1.append(&mut c2);
+        (u1, c1)
     }
 
     let bb = shape.bounding_box().unwrap();
     let expand = resolution * 2.0;
     let bb = bb.expand(expand, expand, expand, expand);
+    let sample_dist = SampleDist { x_bump: resolution, y_bump: resolution };
 
     ::flame::start("build poor mans quad tree");
-    let sample_dist = SampleDist { x_bump: resolution, y_bump: resolution };
     //let (pmqt, _) = PmQuadTree::build(shape, bb, sample_dist).unwrap();
     ::flame::end("build poor mans quad tree");
 
     ::flame::start("build bitmap");
     let bitmap = Bitmap::new(shape, sample_dist.max_bump() * 5.0);
-    println!("bitmap size: {:?}", bitmap.size());
     ::flame::end("build bitmap");
 
     ::flame::start("filter sample with bitmap");
     let (mut out, to_filter) = sample_with_bitmap(bb, sample_dist, &bitmap);
-    println!("out: {}, to_filter: {}", out.len(), to_filter.len());
     ::flame::end("filter sample with bitmap");
 
     ::flame::start("filter points");
