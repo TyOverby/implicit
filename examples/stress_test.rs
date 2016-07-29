@@ -3,6 +3,7 @@
 extern crate implicit;
 extern crate flame;
 extern crate test;
+extern crate rayon;
 
 use implicit::*;
 use implicit::geom::*;
@@ -15,6 +16,9 @@ const RESOLUTION: f32 = 1.0;
 const SCALE: f32 = RESOLUTION;
 
 fn main() {
+    let r_conf = rayon::Configuration::new();
+    rayon::initialize(r_conf);
+
     let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 500.0};
     let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 250.0, y: 250.0 }));
     let poly = ::flame::span_of("prep", || circle.or(square).smooth(10.0, RESOLUTION));

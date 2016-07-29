@@ -235,13 +235,13 @@ fn sample_these<S: Implicit>(shape: &S, chunk: &[Point], resolution: f32) -> Vec
     let mut p_right_top: Option<(Point, f32)> = None;
     let mut p_right_bot: Option<(Point, f32)> = None;
 
+    ::flame::start("sampling");
     for &p in chunk {
         let sa = A * resolution + p;
         let sb = B * resolution + p;
         let sc = C * resolution + p;
         let sd = D * resolution + p;
 
-        ::flame::start("sampling");
         let sra = match p_right_top {
             Some((pp, pv)) if pp.close_to(&sa, resolution) => {
                 pv
@@ -262,7 +262,6 @@ fn sample_these<S: Implicit>(shape: &S, chunk: &[Point], resolution: f32) -> Vec
 
         let srb = shape.sample(sb);
         let src = shape.sample(sc);
-        ::flame::end("sampling");
 
         p_right_top = Some((sb, srb));
         p_right_bot = Some((sc, src));
@@ -277,6 +276,9 @@ fn sample_these<S: Implicit>(shape: &S, chunk: &[Point], resolution: f32) -> Vec
             MarchResult::OneDebug(_) | MarchResult::Debug => { }
         }
     }
+
+    ::flame::end("sampling");
+
     local_lines
 }
 
