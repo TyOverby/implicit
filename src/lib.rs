@@ -8,6 +8,7 @@ extern crate fnv;
 extern crate num_cpus;
 extern crate simd;
 extern crate rayon;
+extern crate thread_id;
 
 mod private;
 mod scene;
@@ -528,7 +529,10 @@ impl Implicit for Polygon {
             let mut out_dist = [0.0, 0.0, 0.0, 0.0];
             min_dist.store(&mut out_dist, 0);
             let mut min = out_dist[0].min(out_dist[1]).min(out_dist[2]).min(out_dist[3]);
-            for line in &self.lines()[simd_used..] {
+
+            let remaining_lines = &self.lines()[simd_used ..];
+            debug_assert!(remaining_lines.len() < 4);
+            for line in remaining_lines {
                 min = min.min(line.dist_to_point_2(pos));
             }
 

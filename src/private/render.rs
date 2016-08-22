@@ -208,24 +208,29 @@ where A: Implicit + Sync {
 }
 
 fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<Point>, shape: &S) -> Vec<Line> {
-    fn divide<S: Implicit + Sync>(shape: &S, chunks: &[&[Point]], resolution: f32) -> Vec<Line> {
+    fn divide<S: Implicit + Sync>(shape: &S, chunks: &[&[Point]], resolution: f32, main_thread_id: usize) -> Vec<Line> {
         if chunks.len() == 0 {
             return vec![];
         }
         if chunks.len() == 1 {
-            return sample_these(shape, chunks[0], resolution);
+            let r = sample_these(shape, chunks[0], resolution);
+            //::flame::commit_thread();
+            return r;
         }
 
         let (mut cur, mut rest) = ::rayon::join(
             || sample_these(shape, chunks[0], resolution),
-            || divide(shape, &chunks[1..], resolution));
+            || divide(shape, &chunks[1..], resolution, main_thread_id));
         rest.append(&mut cur);
+
+        //::flame::commit_thread();
 
         rest
     }
 
-    let chunks: Vec<_> = sample_points.chunks(sample_points.len() / ::num_cpus::get()).collect();
-    divide(shape, &chunks, resolution)
+    //let chunks: Vec<_> = sample_points.chunks(sample_points.len() / ::num_cpus::get()).collect();
+    let chunks = &[&sample_points[..]][..];
+    divide(shape, &chunks, resolution, ::thread_id::get())
 }
 
 fn sample_these<S: Implicit>(shape: &S, chunk: &[Point], resolution: f32) -> Vec<Line> {

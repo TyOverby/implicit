@@ -11,101 +11,6 @@ struct SampleDist {
     pub y_bump: f32,
 }
 
-#[derive(Debug)]
-enum PmQuadTree {
-    Node {
-        bb: Rect,
-        children: [Option<Box<PmQuadTree>>; 4],
-    },
-    Leaf(Rect)
-}
-use self::PmQuadTree::*;
-
-impl PmQuadTree {
-    fn could_contain(&self, point: Point) -> bool {
-        match self {
-            &Node { bb, .. } => bb.contains(&point),
-            &Leaf(rect) => rect.contains(&point),
-        }
-    }
-
-    #[inline(always)]
-    fn contains(&self, point: Point) -> bool {
-        match self {
-            &Node { ref bb, ref children } => {
-                if !bb.contains(&point) {
-                    false
-                } else {
-                    for child in (&children[..]).iter().filter_map(|a| a.as_ref()) {
-                        if child.could_contain(point) {
-                            return child.contains(point);
-                        }
-                    }
-                    false
-                }
-            }
-            &Leaf(rect) => {
-                rect.contains(&point)
-            }
-        }
-    }
-
-    fn is_leaf(&self) -> bool {
-        match self {
-            &Leaf(_) => true,
-            _ => false
-        }
-    }
-    fn is_node(&self) -> bool {
-        !self.is_leaf()
-    }
-
-    fn build<I: Implicit>(shape: &I, bb: Rect, sample_dist: SampleDist) -> Option<(PmQuadTree, bool)> {
-        let radius_max = bb.width().max(bb.height());
-        let radius_min = bb.width().min(bb.height());
-        let sample = shape.sample(bb.midpoint()).abs();
-
-        if sample > radius_max {
-            return None;
-        } else if radius_min < sample_dist.max_bump() * 5.0 {
-            return Some((Leaf(bb), true));
-        }
-
-        let q = bb.split_quad();
-        let a = PmQuadTree::build(shape, q[0], sample_dist);
-        let b = PmQuadTree::build(shape, q[1], sample_dist);
-        let c = PmQuadTree::build(shape, q[2], sample_dist);
-        let d = PmQuadTree::build(shape, q[3], sample_dist);
-
-        let (a, b, c, d) = match (a, b, c, d) {
-            (Some((Leaf(_), true)), Some((Leaf(_), true)),
-             Some((Leaf(_), true)), Some((Leaf(_), true))) => return Some((Leaf(bb), true)),
-
-            (Some((Leaf(a), true)), Some((Leaf(b), true)), None, None) => return Some((Leaf(a.union_with(&b)), false)),
-            (None, None, Some((Leaf(c), true)), Some((Leaf(d), true))) => return Some((Leaf(c.union_with(&d)), false)),
-            (Some((Leaf(a), true)), None, Some((Leaf(c), true)), None) => return Some((Leaf(a.union_with(&c)), false)),
-            (None, Some((Leaf(b), true)), None, Some((Leaf(d), true))) => return Some((Leaf(b.union_with(&d)), false)),
-
-            (Some((a, _)), None, None, None) => return Some((a, false)),
-            (None, Some((b, _)), None, None) => return Some((b, false)),
-            (None, None, Some((c, _)), None) => return Some((c, false)),
-            (None, None, None, Some((d, _))) => return Some((d, false)),
-            (None, None, None, None) => return None,
-            (a, b, c, d) => (a, b, c, d),
-        };
-
-        return Some((Node {
-            bb: bb,
-            children: [
-                a.map(|p| Box::new(p.0)),
-                b.map(|p| Box::new(p.0)),
-                c.map(|p| Box::new(p.0)),
-                d.map(|p| Box::new(p.0)),
-            ]
-        }, false))
-    }
-}
-
 impl SampleDist {
     fn modify_bb(&self, bb: &mut Rect) {
         let top_left = {
@@ -139,31 +44,17 @@ impl SampleDist {
 
 
 pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
-    fn sample_with_pmqt(rect: Rect, sample_dist: SampleDist, pmqt: &PmQuadTree) -> (Vec<Point>, Vec<Point>) {
-        let mut out_uncontested = vec![];
-        let mut out_contested = vec![];
-        for (p, c) in sample_from_box(rect, sample_dist) {
-            match (pmqt.contains(p), c) {
-                (true, true) => out_uncontested.push(p),
-                (true, false) => out_contested.push(p),
-                (false, _) => {}
-            }
-        }
-
-        (out_uncontested, out_contested)
-    }
-
     fn sample_with_bitmap(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap) -> (Vec<Point>, Vec<Point>) {
         fn real_sample_with_bitmap(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap) -> (Vec<Point>, Vec<Point>) {
             let mut out_uncontested = vec![];
             let mut out_contested = vec![];
+            let cmp = sample_dist.max_bump() * 5.0;
+
             for (p, c) in sample_from_box(rect, sample_dist) {
                 let Point{x, y} = p;
                 let sample = bitmap.sample(x, y, |a, b, c, d| (a.abs()).min(b.abs()).min(c.abs()).min(d.abs()));
 
-                let cmp = sample_dist.max_bump() * 5.0;
                 let bll = sample < cmp;
-
                 match (bll, c) {
                     (true, true) => {
                         out_uncontested.push(p);
@@ -179,21 +70,29 @@ pub fn sampling_points<S: Implicit>(shape: &S, resolution: f32) -> Vec<Point> {
         }
 
 
-        fn parallel(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap, thread_count: u32, target_threads: u32) -> (Vec<Point>, Vec<Point>) {
+        fn parallel(rect: Rect, sample_dist: SampleDist, bitmap: &Bitmap, thread_count: u32, target_threads: u32, main_thread_id: usize) -> (Vec<Point>, Vec<Point>) {
             if thread_count >= target_threads {
-                return real_sample_with_bitmap(rect, sample_dist, bitmap);
+                let r = ::flame::span_of("real sample with bitmap", || real_sample_with_bitmap(rect, sample_dist, bitmap));
+                if ::thread_id::get() != main_thread_id {
+                    ::flame::commit_thread();
+                }
+                return r;
             }
 
             let (top, bot) = rect.split_hori();
             let ((mut u1, mut c1), (mut u2, mut c2)) =
-                ::rayon::join(move || parallel(top, sample_dist, bitmap, thread_count * 2, target_threads),
-                              move || parallel(bot, sample_dist, bitmap, thread_count * 2, target_threads));
+                ::rayon::join(move || parallel(top, sample_dist, bitmap, thread_count * 2, target_threads, main_thread_id),
+                              move || parallel(bot, sample_dist, bitmap, thread_count * 2, target_threads, main_thread_id));
             u1.append(&mut u2);
             c1.append(&mut c2);
+
+            if ::thread_id::get() != main_thread_id {
+                ::flame::commit_thread();
+            }
             (u1, c1)
         }
 
-        parallel(rect, sample_dist, bitmap, 1, 7)
+        parallel(rect, sample_dist, bitmap, 1, 7, ::thread_id::get())
     }
 
     let bb = shape.bounding_box().unwrap();

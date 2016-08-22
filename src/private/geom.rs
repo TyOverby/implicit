@@ -678,6 +678,8 @@ pub mod simd {
         vx: f32x4, vy: f32x4) -> (i32x4, i32x4) {
         let zero = f32x4::splat(0.0);
         let one = f32x4::splat(1.0);
+        let zero_i = i32x4::splat(0);
+        let one_i = i32x4::splat(1);
 
         let a1x = px - wx;
         let a1y = py - wy;
@@ -696,9 +698,6 @@ pub mod simd {
 
         let t2_1 = dot(a1x, a1y, a3_1x, a3_1y) / dot(a2x, a2y, a3_1x, a3_1y);
         let t2_2 = dot(a1x, a1y, a3_2x, a3_2y) / dot(a2x, a2y, a3_2x, a3_2y);
-
-        let zero_i = i32x4::splat(0);
-        let one_i = i32x4::splat(1);
 
         let mask_1_1 = t1_1.ge(zero);
         let mask_2_1 = t2_1.ge(zero);
