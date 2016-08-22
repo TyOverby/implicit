@@ -5,6 +5,7 @@ mod helper;
 mod display;
 
 use implicit::*;
+use implicit::formats::pdf::*;
 use implicit::geom::*;
 
 const WIDTH: f32 = 3.37;
@@ -82,7 +83,5 @@ fn main() {
     scene.render_all(&mut pdf);
     pdf.write_out("pouch.pdf");
 
-    let panels = panels.boxed();
-
-    helper::display(1.0, vec![(panels.clone(), helper::Display::Dots), (panels, helper::Display::Lines)]);
+    helper::display(&[&panels]);
 }

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(pub_restricted)]
 
 extern crate vecmath;
 extern crate rand;
@@ -10,21 +11,21 @@ extern crate simd;
 extern crate rayon;
 extern crate thread_id;
 
-mod private;
+mod vectorize;
+pub mod formats;
 mod scene;
+pub(crate) mod util;
 
-pub use private::render::{render, RenderMode, OutputMode};
-pub use private::sample_points::sampling_points;
-pub use private::geom;
-pub use private::quadtree::{Spatial, QuadTree};
-pub use private::output_device::{OutputDevice, NullDevice};
+pub use vectorize::render::{render, RenderMode, OutputMode};
+pub use formats::output_device::{OutputDevice, NullDevice};
 pub use scene::Scene;
-pub use private::svg::SvgWriter;
-pub use private::pdf::PdfWriter;
+pub use vectorize::render2;
+pub mod geom {
+    pub use ::util::geom::*;
+}
 
-
-use private::{Rect, Point, Polygon, Matrix, Vector, Line, Ray};
 use std::rc::Rc;
+use util::geom::{Line, Point, Rect, Polygon, Matrix, Vector, Ray};
 
 pub trait Implicit {
     /// Returns the distance from a point to the nearest edge of a surface.
@@ -98,10 +99,11 @@ pub trait Implicit {
         Transformation::new(self)
     }
 
-    fn scale(self, sx: f32, sy: f32) -> Transformation<Self> where Self: Sized {
-        let mut r = Transformation::new(self);
-        r.matrix = r.matrix.scale(sx, sy);
-        r
+    fn scale(self, factor: f32) -> Scale<Self> where Self: Sized {
+        Scale {
+            target: self,
+            factor: factor,
+        }
     }
 
     fn translate(self, x: f32, y: f32) -> Transformation<Self> where Self: Sized {
@@ -230,6 +232,14 @@ pub struct BoxCache<A: Implicit> {
 pub struct Transformation<A: Implicit> {
     pub target: A,
     pub matrix: Matrix,
+    scale_x: f32,
+    scale_y: f32,
+}
+
+#[derive(Copy, Clone)]
+pub struct Scale<A: Implicit> {
+    pub target: A,
+    pub factor: f32,
 }
 
 impl Implicit for PolyGroup {
@@ -266,7 +276,9 @@ impl <A: Implicit> Transformation<A> {
     pub fn new(a: A) -> Transformation<A> {
         Transformation {
              target: a,
-             matrix: Matrix::new()
+             matrix: Matrix::new(),
+             scale_x: 1.0,
+             scale_y: 1.0,
         }
     }
 }
@@ -377,6 +389,32 @@ impl <A: Implicit> Implicit for Transformation<A> {
         rect.expand_to_include(&d);
 
         Some(rect)
+    }
+
+    fn follows_rules(&self) -> bool {
+        self.target.follows_rules()
+    }
+}
+
+impl <A: Implicit> Implicit for Scale<A> {
+    fn sample(&self, pos: Point) -> f32 {
+        let ptx = pos.x / self.factor;
+        let pty = pos.y / self.factor;
+        self.target.sample(Point{x: ptx, y: pty}) * self.factor
+    }
+
+    fn bounding_box(&self) -> Option<Rect> {
+        let bb = match self.target.bounding_box() {
+            Some(bb) => bb,
+            None => return None
+        };
+
+        let top_left = bb.top_left();
+        let w = bb.width() * self.factor;
+        let h = bb.height() * self.factor;
+
+
+        Some(Rect::from_point_and_size(&top_left, &Vector{x: w, y: h}))
     }
 
     fn follows_rules(&self) -> bool {
@@ -513,8 +551,8 @@ impl Implicit for Polygon {
                 let vx = f32x4::load(right_xs, 0);
                 let vy = f32x4::load(right_ys, 0);
 
-                min_dist = min_dist.min(::geom::simd::line_to_point_simd(pos_x, pos_y, vx, vy, wx, wy));
-                let (r1, r2) = ::geom::simd::lines_touching_rays(pos_x, pos_y, ray_1x, ray_1y, ray_2x, ray_2y, vx, vy, wx, wy);
+                min_dist = min_dist.min(::util::geom::simd::line_to_point_simd(pos_x, pos_y, vx, vy, wx, wy));
+                let (r1, r2) = ::util::geom::simd::lines_touching_rays(pos_x, pos_y, ray_1x, ray_1y, ray_2x, ray_2y, vx, vy, wx, wy);
                 ray_intersect_1 = ray_intersect_1 + r1;
                 ray_intersect_2 = ray_intersect_2 + r2;
 

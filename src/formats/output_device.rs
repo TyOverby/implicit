@@ -1,4 +1,4 @@
-use ::geom::Point;
+use ::util::geom::Point;
 
 pub trait OutputDevice {
     fn start_line(&mut self);

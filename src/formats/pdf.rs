@@ -1,5 +1,5 @@
-use super::OutputDevice;
-use ::geom::Point;
+use ::OutputDevice;
+use ::util::geom::Point;
 
 pub struct PdfWriter {
     size: (f32, f32),

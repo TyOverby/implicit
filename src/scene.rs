@@ -1,5 +1,5 @@
 use ::{OutputMode, RenderMode, SyncImplicit, render, OutputDevice};
-use ::geom::{Point, Rect, Matrix};
+use ::util::geom::{Point, Rect, Matrix};
 
 pub struct Scene {
     shapes: Vec<(Rect, Matrix, OutputMode)>,

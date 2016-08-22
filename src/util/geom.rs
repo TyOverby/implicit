@@ -259,6 +259,34 @@ impl Rect {
         }
     }
 
+    pub fn north(&self) -> Point {
+        Point {
+            x: self.left() + self.width() / 2.0,
+            y: self.top()
+        }
+    }
+
+    pub fn south(&self) -> Point {
+        Point {
+            x: self.left() + self.width() / 2.0,
+            y: self.bottom()
+        }
+    }
+
+    pub fn west(&self) -> Point {
+        Point {
+            x: self.left(),
+            y: self.top() + self.height() / 2.0,
+        }
+    }
+
+    pub fn east(&self) -> Point {
+        Point {
+            x: self.right(),
+            y: self.top() + self.height() / 2.0,
+        }
+    }
+
 
     pub fn expanded_by(&self, point: &Point) -> Rect {
         let mut r = self.clone();

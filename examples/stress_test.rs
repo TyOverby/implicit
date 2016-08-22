@@ -1,9 +1,12 @@
 #![feature(test)]
 
 extern crate implicit;
+extern crate lux;
 extern crate flame;
 extern crate test;
 extern crate rayon;
+
+mod helper;
 
 use implicit::*;
 use implicit::geom::*;
@@ -16,19 +19,16 @@ const RESOLUTION: f32 = 1.0;
 const SCALE: f32 = RESOLUTION;
 
 fn main() {
-    let r_conf = rayon::Configuration::new();
-    rayon::initialize(r_conf);
-
     let circle = Circle { center: Point{x: 0.0, y: 0.0}, radius: 500.0};
-    let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 250.0, y: 250.0 }));
-    let poly = ::flame::span_of("prep", || circle.or(square).smooth(10.0, RESOLUTION));
+    let square = Rectangle::new(Rect::from_point_and_size(&Point { x: 0.0, y: 0.0 }, &Vector { x: 500.0, y: 500.0 }));
+    let poly = ::flame::span_of("prep", || circle.or(square.clone()).smooth(10.0, RESOLUTION));
     println!("{} lines", poly.target.polys[0].lines().len());
-    let poly = poly.scale(SCALE, SCALE);
+    let poly = poly.scale(SCALE);
 
     let mut total = 0.0;
     let mut minimum = ::std::f32::INFINITY;
     let mut maximum = -::std::f32::INFINITY;
-    let mut min_index = 0;
+    let mut _min_index = 0;
     for i in 0 .. ITERS {
         flame::start("real deal");
         let a = render(poly.clone(), &RenderMode::Outline, RESOLUTION, true);
@@ -38,11 +38,14 @@ fn main() {
         total += end;
         minimum = minimum.min(end);
         maximum = maximum.max(end);
-        min_index = i;
+        _min_index = i;
     }
 
-    ::flame::dump_html(&mut File::create("./flamegraph.html").unwrap());
+    ::flame::dump_html(&mut File::create("./flamegraph.html").unwrap()).unwrap();
     let threads = ::flame::threads();
     println!("{}", ::flame::Thread::into_json_list(&threads));
-    //println!("avg: {}, min: {}, max: {}", total / ITERS as f32, minimum, maximum);
+    println!("avg: {}, min: {}, max: {}", total / ITERS as f32, minimum, maximum);
+
+    //helper::display(&[&poly as &(Implicit + Sync), &square as &(Implicit + Sync)]);
+    helper::display(&[&poly]);
 }

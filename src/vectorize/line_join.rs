@@ -1,6 +1,7 @@
 use std::cmp::{PartialOrd, Ordering};
 
-use super::*;
+use ::util::geom::{Point, Line, Rect};
+use ::util::quadtree::QuadTree;
 
 const EPSILON: f32 = 0.001;
 const OPT_EPSILON: f32 = 0.05;
@@ -19,8 +20,8 @@ impl LineType {
     }
 }
 
-pub fn connect_lines(lines: Vec<Line>, resolution: f32) -> (Vec<Vec<Point>>, QuadTree<Line>) {
-    let (mut joined, qt) = join_lines(lines, resolution);
+pub fn connect_lines(lines: Vec<Line>) -> (Vec<Vec<Point>>, QuadTree<Line>) {
+    let (mut joined, qt) = join_lines(lines);
 
     loop {
         let mut any_progress = false;
@@ -196,7 +197,9 @@ fn fuse_ends(lines: Vec<LineType>) -> (Vec<LineType>, bool) {
     (out, made_progress)
 }
 
-fn join_lines(lines: Vec<Line>, resolution: f32) -> (Vec<LineType>, QuadTree<Line>) {
+fn join_lines(lines: Vec<Line>) -> (Vec<LineType>, QuadTree<Line>) {
+    let resolution = lines[0].bounding_box().width();
+
     let mut aabb: Option<Rect> = None;
     for line in &lines {
         if let Some(aabb) = aabb.as_mut() {

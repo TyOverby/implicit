@@ -1,13 +1,10 @@
 use super::{
     simplify_line,
     connect_lines,
-    Point,
-    MarchResult,
-    march,
-    Line,
-    A, B, C, D,
-    sampling_points,
+    gather_lines_2,
 };
+
+use ::util::geom::Point;
 
 use ::Implicit;
 use itertools::Itertools;
@@ -180,20 +177,22 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
     }
 }
 
-pub fn render<A>(object: A, rm: &RenderMode, resolution: f32, simplify: bool) -> OutputMode
+pub fn render<A>(object: A, rm: &RenderMode, _resolution: f32, simplify: bool) -> OutputMode
 where A: Implicit + Sync {
     flame::start("render");
 
     flame::start("collect sampling points");
-    let sample_points = sampling_points(&object, resolution);
+    //let sample_points = sampling_points(&object, resolution);
     flame::end("collect sampling points");
 
     flame::start("gather lines");
-    let lines = gather_lines(resolution, sample_points, &object);
+    //let lines = gather_lines(resolution, sample_points, &object);
+    let (_tree, lines) = gather_lines_2(&mut (), &object, 12);
+    //println!("# of lines {}", lines.len());
     flame::end("gather lines");
 
     flame::start("connect lines");
-    let (mut connected_lines, _tree) = connect_lines(lines, resolution);
+    let (mut connected_lines, _tree) = connect_lines(lines);
     if simplify {
         connected_lines = connected_lines.into_iter().map(simplify_line).collect();
     }
@@ -207,88 +206,8 @@ where A: Implicit + Sync {
     r
 }
 
-fn gather_lines<S: Implicit + Sync>(resolution: f32, sample_points: Vec<Point>, shape: &S) -> Vec<Line> {
-    fn divide<S: Implicit + Sync>(shape: &S, chunks: &[&[Point]], resolution: f32, main_thread_id: usize) -> Vec<Line> {
-        if chunks.len() == 0 {
-            return vec![];
-        }
-        if chunks.len() == 1 {
-            let r = sample_these(shape, chunks[0], resolution);
-            //::flame::commit_thread();
-            return r;
-        }
-
-        let (mut cur, mut rest) = ::rayon::join(
-            || sample_these(shape, chunks[0], resolution),
-            || divide(shape, &chunks[1..], resolution, main_thread_id));
-        rest.append(&mut cur);
-
-        //::flame::commit_thread();
-
-        rest
-    }
-
-    //let chunks: Vec<_> = sample_points.chunks(sample_points.len() / ::num_cpus::get()).collect();
-    let chunks = &[&sample_points[..]][..];
-    divide(shape, &chunks, resolution, ::thread_id::get())
-}
-
-fn sample_these<S: Implicit>(shape: &S, chunk: &[Point], resolution: f32) -> Vec<Line> {
-    let mut local_lines = vec![];
-
-    // Previously sampled points
-    let mut p_right_top: Option<(Point, f32)> = None;
-    let mut p_right_bot: Option<(Point, f32)> = None;
-
-    ::flame::start("sampling");
-    for &p in chunk {
-        let sa = A * resolution + p;
-        let sb = B * resolution + p;
-        let sc = C * resolution + p;
-        let sd = D * resolution + p;
-
-        let sra = match p_right_top {
-            Some((pp, pv)) if pp.close_to(&sa, resolution) => {
-                pv
-            }
-            _ => {
-                shape.sample(sa)
-            }
-        };
-
-        let srd = match p_right_bot {
-            Some((pp, pv)) if pp.close_to(&sd, resolution) => {
-                pv
-            }
-            _ => {
-                shape.sample(sd)
-            }
-        };
-
-        let srb = shape.sample(sb);
-        let src = shape.sample(sc);
-
-        p_right_top = Some((sb, srb));
-        p_right_bot = Some((sc, src));
-
-        match march(sra, srb, src, srd, shape, p, resolution) {
-            MarchResult::None => {},
-            MarchResult::One(line) => local_lines.push(line),
-            MarchResult::Two(line1, line2) => {
-                local_lines.push(line1);
-                local_lines.push(line2);
-            }
-            MarchResult::OneDebug(_) | MarchResult::Debug => { }
-        }
-    }
-
-    ::flame::end("sampling");
-
-    local_lines
-}
-
 fn correct_spin(points: &mut [Point]) {
-    fn is_clockwise(points: &[Point]) -> bool {
+    let is_clockwise = {
         let mut total = 0.0;
         for slice in points.windows(2) {
             let a = slice[0];
@@ -296,9 +215,9 @@ fn correct_spin(points: &mut [Point]) {
             total += (b.x - a.x) * (b.y + a.y);
         }
         total > 0.0
-    }
+    };
 
-    if !is_clockwise(points) {
+    if !is_clockwise {
         points.reverse();
     }
 }

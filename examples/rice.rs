@@ -47,7 +47,7 @@ fn main() {
                             .or(wire_3.outline_inner(wire_size))
                             .or(wire_4.outline_inner(wire_size))
                             .or(center.outline_inner(wire_size));
-    let f = finished.scale(100.0, 100.0).boxed();
+    let f = finished.scale(100.0).boxed();
 
-    helper::display(5.0, vec![(f, helper::Display::Lines)]);
+    helper::display(&[&f]);
 }

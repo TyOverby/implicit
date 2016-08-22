@@ -3,7 +3,7 @@ extern crate implicit;
 
 mod helper;
 
-use implicit::*;
+use implicit::{Implicit, Circle};
 use implicit::geom::*;
 
 
@@ -20,9 +20,5 @@ fn main() {
 
     let circle = c1.or(c2);
 
-    helper::display(5.0, vec![
-        (circle.boxed(), helper::Display::Dots),
-        (circle.translate(0.0, 100.0).boxed(), helper::Display::Pixels),
-        (circle.translate(0.0, 200.0).boxed(), helper::Display::Lines),
-    ]);
+    helper::display(&[&circle]);
 }
