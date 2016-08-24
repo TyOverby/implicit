@@ -60,7 +60,7 @@ fn front_outline() -> PolyGroup {
 
     let result = main_front_rect.or(left_triangle).or(right_triangle);
 
-    result.fix_rules(2.25)
+    result.fix_rules(8)
 }
 
 fn holes() -> Vec<Not<Circle>> {
@@ -102,7 +102,7 @@ fn center() -> PolyGroup {
             Point { x: CENTER_LEN, y: CENTER_HEIGHT }].into_iter());
 
     let result = block.or(left_triangle).or(right_triangle).translate(TRI_OFFSET, 0.0);
-    result.fix_rules(2.25)
+    result.fix_rules(8)
 }
 
 fn front() -> AndThese<SyncBox> {
@@ -164,7 +164,7 @@ fn main() {
     let hook_attach_stitched = hook_attach_stitched.center_at(&front_collar.center().unwrap());
 
     let mut scene = Scene::new();
-    scene.resolution = 0.5;
+    scene.recursion_depth = 8;
 
     let offset_50 = offset(0.0);
     let offset_250 = offset(200.0);

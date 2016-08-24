@@ -25,11 +25,13 @@ where I: Iterator<Item=Event> {
                 *dirty = true;
             }
             Event::KeyReleased(_, Some('j'), _) => {
-                canvas.scene.resolution *= 1.5f32;
+                canvas.scene.recursion_depth += 1;
                 *dirty = true;
             }
             Event::KeyReleased(_, Some('k'), _) => {
-                canvas.scene.resolution /= 1.5f32;
+                if canvas.scene.recursion_depth != 0 {
+                    canvas.scene.recursion_depth -= 1;
+                }
                 *dirty = true;
             }
             Event::KeyReleased(_, Some('h'), _) => {
