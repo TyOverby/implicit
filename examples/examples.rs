@@ -187,3 +187,7 @@ pub fn rice_wall() -> GenericShape<'static> {
 
     GenericShape::Boxed(Box::new(finished.grow(0.00)))
 }
+
+fn main() {
+    panic!("not actually an example");
+}

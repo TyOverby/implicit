@@ -98,7 +98,7 @@ impl <'a> FrameWrapper<'a> {
     }
 }
 
-impl <'a> render2::QuadTreeProducer for FrameWrapper<'a> {
+impl <'a> line_gather::QuadTreeProducer for FrameWrapper<'a> {
     type Tree = ();
 
     fn make_leaf_full(&mut self, rect: Rect) -> Self::Tree {
@@ -163,7 +163,7 @@ pub fn display<I: Implicit + Sync + ?Sized>(shapes: &[&I]) {
             frame.scale(canvas.draw_scale, canvas.draw_scale);
             frame.translate(canvas.draw_offset.0, canvas.draw_offset.1);
             for &shape in shapes {
-                render2::gather_lines_2(&mut FrameWrapper(&mut frame, canvas.draw_scale, canvas.debug), shape, canvas.recurse_limit);
+                line_gather::gather_lines(&mut FrameWrapper(&mut frame, canvas.draw_scale, canvas.debug), shape, canvas.recurse_limit);
             }
         }
 

@@ -91,7 +91,7 @@ where S: Implicit, P: QuadTreeProducer {
     }
 }
 
-pub fn gather_lines_2<S: ?Sized, P>(p: &mut P, shape: &S, depth: u32) -> (P::Tree, Vec<Line>)
+pub fn gather_lines<S: ?Sized, P>(p: &mut P, shape: &S, depth: u32) -> (P::Tree, Vec<Line>)
 where S: Implicit + Sync, P: QuadTreeProducer {
     let mut out = vec![];
 

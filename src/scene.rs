@@ -3,7 +3,7 @@ use ::util::geom::{Point, Rect, Matrix};
 
 pub struct Scene {
     shapes: Vec<(Rect, Matrix, OutputMode)>,
-    pub resolution: f32,
+    pub recursion_depth: u32,
     total_bounding_box: Rect,
 }
 
@@ -12,7 +12,7 @@ impl Scene {
         Scene {
             shapes: Vec::new(),
             total_bounding_box: Rect::null_at(&Point{x: 0.0, y: 0.0}),
-            resolution: 2.0,
+            recursion_depth: 8,
         }
     }
 
@@ -22,7 +22,7 @@ impl Scene {
         let new_bb = transform_bounding_box(bb, matrix);
 
         self.total_bounding_box = self.total_bounding_box.union_with(&new_bb);
-        self.shapes.push((shape.bounding_box().unwrap(), matrix, render(shape, &rendermode, self.resolution, true)));
+        self.shapes.push((shape.bounding_box().unwrap(), matrix, render(shape, &rendermode, self.recursion_depth, true)));
         i
     }
 

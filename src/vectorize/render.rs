@@ -1,7 +1,7 @@
 use super::{
     simplify_line,
     connect_lines,
-    gather_lines_2,
+    gather_lines,
 };
 
 use ::util::geom::Point;
@@ -177,18 +177,12 @@ fn transform(points: Vec<Vec<Point>>, mode: &RenderMode) -> OutputMode {
     }
 }
 
-pub fn render<A>(object: A, rm: &RenderMode, _resolution: f32, simplify: bool) -> OutputMode
+pub fn render<A>(object: A, rm: &RenderMode, recursion_depth: u32, simplify: bool) -> OutputMode
 where A: Implicit + Sync {
     flame::start("render");
 
-    flame::start("collect sampling points");
-    //let sample_points = sampling_points(&object, resolution);
-    flame::end("collect sampling points");
-
     flame::start("gather lines");
-    //let lines = gather_lines(resolution, sample_points, &object);
-    let (_tree, lines) = gather_lines_2(&mut (), &object, 12);
-    //println!("# of lines {}", lines.len());
+    let (_tree, lines) = gather_lines(&mut (), &object, recursion_depth);
     flame::end("gather lines");
 
     flame::start("connect lines");
