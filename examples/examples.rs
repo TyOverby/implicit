@@ -38,7 +38,7 @@ pub fn rect() -> Transformation<Polygon> {
                        Point { x: 200.0, y:  50.0 },
                        ].into_iter());
 
-    let mut transform = poly.transform();
+    let transform = poly.transform();
 
     transform.matrix.translate(150.0, 150.0)
                     .rotate(3.14 / 8.0)
@@ -88,7 +88,7 @@ pub fn poly() -> Transformation<Xor<Boundary<BoxCache<Polygon>>, Boundary<BoxCac
         right: poly_inner
     };
 
-    let mut transform = poly.transform();
+    let transform = poly.transform();
 
     transform.matrix.translate(50.0, 50.0)
                     .rotate(0.15)

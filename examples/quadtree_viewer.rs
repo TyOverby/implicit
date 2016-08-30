@@ -8,8 +8,8 @@ use lux::interactive::Event;
 
 use rand::{thread_rng, Rng};
 
-use implicit::*;
 use implicit::geom::*;
+use implicit::quadtree::*;
 
 #[derive(Eq, PartialEq, Clone, Copy)]
 enum AddMode {
@@ -31,7 +31,7 @@ fn draw_rectangle(frame: &mut Frame, rect: &Rect, color: (f32, f32, f32)) {
          .stroke();
 }
 
-fn draw_help_text(frame: &mut Frame, add_mode: AddMode, query_mode: QueryMode) {
+fn draw_help_text(_frame: &mut Frame, _add_mode: AddMode, _query_mode: QueryMode) {
     /*
     frame.text("[a] add_mode", 20.0, 20.0)
          .color(if add_mode == AddMode::Draw { (0.6, 0.0, 0.6) } else { (0.0, 0.0, 0.0) })

@@ -4,9 +4,9 @@ extern crate implicit;
 mod helper;
 mod display;
 
-use implicit::*;
+use implicit::formats::pdf::PdfWriter;
 
 fn main() {
-    let mut pdf_writer = PdfWriter::new("cm", 1.0);
+    let pdf_writer = PdfWriter::new("cm", 1.0);
     pdf_writer.write_out("mine.pdf");
 }

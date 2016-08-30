@@ -69,7 +69,7 @@ fn gaps() -> OrThese<Rectangle> {
 
 fn main() {
     let mut scene = Scene::new();
-    scene.resolution = 0.1;
+    scene.recursion_depth = 8;
 
     let panels = panels();
     let gaps = gaps();

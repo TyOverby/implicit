@@ -26,6 +26,9 @@ pub use implementations::*;
 pub mod geom {
     pub use ::util::geom::*;
 }
+pub mod quadtree {
+    pub use ::util::quadtree::*;
+}
 
 use util::geom::{Point, Rect, Polygon};
 
