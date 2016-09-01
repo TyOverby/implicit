@@ -3,18 +3,21 @@ use ::util::geom::Point;
 
 pub struct PdfWriter {
     size: (f32, f32),
-    buffer: String,
     line_buffer: String,
     conversion: f32,
     start: bool,
+}
+
+fn append_line<S: AsRef<str>>(buffer: &mut String, line: S) {
+    buffer.push_str(line.as_ref());
+    buffer.push_str("\r\n");
 }
 
 impl PdfWriter {
     pub fn new(_units: &str, conversion_factor: f32) -> PdfWriter {
         PdfWriter {
             size: (800.0, 800.0),
-            buffer: String::new(),
-            line_buffer: "0 w\n".into(),
+            line_buffer: String::new(),
             conversion: conversion_factor,
             start: false
         }
@@ -24,43 +27,70 @@ impl PdfWriter {
         use std::io::Write;
         use std::fs::File;
 
-        self.buffer = format!(r#"%PDF-1.6
-1 0 obj <</Type /Catalog /Pages 2 0 R>>
-endobj
-2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>>
-endobj
-3 0 obj<</Type /Page /Parent 2 0 R /Contents 4 0 R /MediaBox [0 0 {} {}]>>
-endobj
-"#, self.size.0, self.size.1);
+        fn write_header(buffer: &mut String, offsets: &mut Vec<usize>, (width, height): (f32, f32)) {
+            append_line(buffer, "%PDF-1.6");
 
-        let length_of_line_buffer = self.line_buffer.len();
-        let location_of_lines = self.buffer.len();
+            offsets.push(buffer.len());
+            append_line(buffer, "1 0 obj");
+            append_line(buffer, "<</Type /Catalog /Pages 2 0 R>>");
+            append_line(buffer, "endobj");
 
-        self.buffer.push_str("4 0 obj\n");
-        self.buffer.push_str(&format!("<</Length {}>>\n", length_of_line_buffer));
+            offsets.push(buffer.len());
+            append_line(buffer, "2 0 obj");
+            append_line(buffer, "<</Type /Pages /Kids [3 0 R] /Count 1>>");
+            append_line(buffer, "endobj");
 
-        self.buffer.push_str("stream\n");
-        self.buffer.push_str(&self.line_buffer);
-        if length_of_line_buffer != 0 {
-            self.buffer.push_str("S\n\n");
+            offsets.push(buffer.len());
+            append_line(buffer, "3 0 obj");
+            append_line(buffer, format!("<</Type /Page /Parent 2 0 R /Contents 4 0 R /MediaBox [0 0 {} {}] /Resources<<>>>>", width, height));
+            append_line(buffer, "endobj");
         }
 
-        self.buffer.push_str("endstream\nendobj\n");
-        let xref_pos = self.buffer.len() + 1; // account for the newline
-        self.buffer.push_str(&format!(r#"
-xref
-0 5
-0000000000 65535 f
-0000000009 00000 n
-0000000056 00000 n
-0000000111 00000 n
-{:010} 00000 n
-trailer <</Size 5 /Root 1 0 R>>
-startxref
-{}
-%%EOF"#, location_of_lines, xref_pos));
+        fn write_body(buffer: &mut String, drawing_lines: &str) {
+            //append_line(buffer, "/DeviceRGB CS");
+            // Set the pen width to 0
+            append_line(buffer, "0 w");
+            buffer.push_str(drawing_lines);
+            // Final stroke
+            append_line(buffer, "S");
+        }
+
+        let mut buffer = String::new();
+        let mut body = String::new();
+        let mut offsets = Vec::new();
+
+        write_header(&mut buffer, &mut offsets, self.size);
+        write_body(&mut body, &self.line_buffer);
+
+        offsets.push(buffer.len());
+
+        append_line(&mut buffer, "4 0 obj");
+        append_line(&mut buffer, format!("<</length {}>>", body.len()));
+        append_line(&mut buffer, "stream");
+        buffer.push_str(&body);
+        append_line(&mut buffer, "");
+        append_line(&mut buffer, "endstream");
+        append_line(&mut buffer, "endobj");
+
+        let xref_location = buffer.len();
+        // +1 because of the default empty object
+        let xref_count = offsets.len() + 1; 
+        append_line(&mut buffer, "xref");
+        append_line(&mut buffer, format!("0 {}", xref_count));
+        // The default empty object
+        append_line(&mut buffer, "0000000000 65535 f");
+
+        for offset in offsets {
+            append_line(&mut buffer, format!("{:010} 00000 n", offset));
+        }
+
+        append_line(&mut buffer, format!("trailer <</Size {} /Root 1 0 R>>", xref_count));
+        append_line(&mut buffer, "startxref");
+        append_line(&mut buffer, format!("{}", xref_location));
+        buffer.push_str("%%EOF");
+
         let mut f = File::create(path).unwrap();
-        f.write(self.buffer.as_bytes()).unwrap();
+        f.write(buffer.as_bytes()).unwrap();
     }
 }
 
@@ -77,7 +107,8 @@ impl OutputDevice for PdfWriter {
 
     fn add_point(&mut self, Point{x, y}: Point) {
         let (x, y) = self.transform_point(x, y);
-        self.line_buffer.push_str(&format!("{} {} {}\n", x, y, if self.start { "m" } else { "l" }));
+        let cmd = if self.start { "m" } else { "l" };
+        append_line(&mut self.line_buffer, format!("{} {} {}", x, y, cmd));
         self.start = false;
     }
 

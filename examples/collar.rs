@@ -163,7 +163,7 @@ fn main() {
     let hook_attach_stitched = hook_attach_stitched.center_at(&front_collar.center().unwrap());
 
     let mut scene = Scene::new();
-    scene.recursion_depth = 15;
+    scene.recursion_depth = 10;
 
     let center = front_collar.bounding_box().unwrap().midpoint();
     let mirror = Matrix::new().mirror_horizontal(center.x);
@@ -203,7 +203,7 @@ fn main() {
         ]);
     }
 
-    helper::display(&[&front_collar]);
+    // helper::display(&[&front_collar]);
 
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);
