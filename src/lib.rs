@@ -19,7 +19,7 @@ pub(crate) mod util;
 
 pub use vectorize::render::{render, RenderMode, OutputMode};
 pub use formats::output_device::{OutputDevice, NullDevice};
-pub use scene::Scene;
+pub use scene::*;
 pub use vectorize::gather_lines;
 pub use vectorize::line_gather;
 pub use implementations::*;

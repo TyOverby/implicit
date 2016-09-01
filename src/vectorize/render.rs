@@ -10,8 +10,8 @@ use ::Implicit;
 use itertools::Itertools;
 use flame;
 
-#[derive(Clone)]
-pub enum RenderMode {
+#[derive(Clone, Copy)]
+pub enum RenderMode<'a> {
     /// The shape is filled in and completely solid.
     Solid,
     /// The shape is traced with an outline.
@@ -26,19 +26,19 @@ pub enum RenderMode {
     ///
     /// -  ---    -----      -  ---    -----
     /// 1 2 3  4    5     6  1 2 3   4   5    6
-    BasicDashed(Vec<f32>),
+    BasicDashed(&'a[f32]),
     /// The shape is traced with a dashed outline.
     ///
     /// The dash-segment length and gap length
     /// are stretched to repeat exactly N times.
-    DashedRepeatingN(Vec<f32>, f32),
+    DashedRepeatingN(&'a[f32], f32),
     /// The shape is traced with a dashed outline that
     /// wraps around to end exactly where it began.
     ///
     /// The dash-segment length and gap length are
     /// stretched the smallest amount to make the
     /// ends meet.
-    DashedPerfect(Vec<f32>)
+    DashedPerfect(&'a[f32])
 }
 
 #[derive(Clone)]

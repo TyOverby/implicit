@@ -1,4 +1,5 @@
 extern crate lux;
+#[macro_use]
 extern crate implicit;
 
 mod helper;
@@ -74,10 +75,13 @@ fn main() {
     let panels = panels();
     let gaps = gaps();
     let panels = panels.or(gaps.clone());
+    let d = &[0.5, 0.5];
+    let dash = RenderMode::BasicDashed(d);
 
-
-    scene.add_shape(&panels, RenderMode::Outline, Matrix::new().translate(WIDTH / 2.0 + DEPTH, 0.0));
-    scene.add_shape(&gaps, RenderMode::BasicDashed(vec![0.5, 0.5]), Matrix::new().translate(WIDTH / 2.0 + DEPTH, 0.0));
+    scene.add(figure![
+        (&panels),
+        (&gaps, dash)
+    ]);
 
     let mut pdf = PdfWriter::new("in", 1.0 * 72.0);
     scene.render_all(&mut pdf);

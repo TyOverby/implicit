@@ -1,4 +1,5 @@
 extern crate lux;
+#[macro_use]
 extern crate implicit;
 extern crate flame;
 
@@ -6,6 +7,7 @@ mod helper;
 mod display;
 
 use implicit::*;
+use implicit::formats::pdf::PdfWriter;
 use implicit::geom::*;
 
 // ALL
@@ -74,6 +76,7 @@ fn holes() -> Vec<Not<Circle>> {
                 },
                 radius: HOLE_RADIUS
             }.not());
+
         holes.push(
             Circle {
                 center: Point {
@@ -151,10 +154,6 @@ fn hook_attach_stitch(middle_height: f32) -> Or<Rectangle, Rectangle> {
 
 
 fn main() {
-    fn offset(y: f32) -> Matrix {
-        Matrix::new().translate(50.0, y)
-    }
-
     let front_collar = front();
     let front_collar_outline = front_collar.clone().shrink(STITCH_OFFSET);
     let back_collar = back();
@@ -164,40 +163,49 @@ fn main() {
     let hook_attach_stitched = hook_attach_stitched.center_at(&front_collar.center().unwrap());
 
     let mut scene = Scene::new();
-    scene.recursion_depth = 8;
+    scene.recursion_depth = 15;
 
-    let offset_50 = offset(0.0);
-    let offset_250 = offset(200.0);
-    let offset_450 = offset(400.0);
-    let offset_650 = offset(600.0);
-    let offset_850 = offset(800.0);
-    let offset_850_right = offset_850.translate(400.0, 0.0);
     let center = front_collar.bounding_box().unwrap().midpoint();
+    let mirror = Matrix::new().mirror_horizontal(center.x);
 
-    ::flame::start("entire thing");
-    let f_c = scene.add_shape(&front_collar, RenderMode::Outline, offset_50);
-    let f_o = scene.add_shape(&front_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_50);
-    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_50);
-    ::flame::end("entire thing");
-    ::flame::dump_html(&mut ::std::fs::File::create("flamegraph.html").unwrap()).unwrap();
+    let arr = &[DASH_SIZE_ON, DASH_SIZE_OFF];
+    let dash = RenderMode::DashedPerfect(arr);
 
-    scene.add_again(f_c, offset_250.mirror_horizontal(center.x));
-    scene.add_again(f_o, offset_250.mirror_horizontal(center.x));
+    scene.add(figure![
+        (&front_collar),
+        (&front_collar_outline, dash),
+        (&hook_attach_stitched, dash)
+    ]);
 
-    let b_c = scene.add_shape(&back_collar, RenderMode::Outline, offset_450);
-    let b_o = scene.add_shape(&back_collar_outline, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_450);
-    scene.add_shape(&hook_attach_stitched, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_450);
 
-    scene.add_again(b_c, offset_650.mirror_horizontal(center.x));
-    scene.add_again(b_o, offset_650.mirror_horizontal(center.x));
+    scene.add(figure![
+        (&front_collar, RenderMode::Outline, Some(mirror)),
+        (&front_collar_outline, dash, Some(mirror))
+    ]);
 
-    let hook_attach = hook_attach(HOOK_ATTACH_SPACING);
-    let hook_attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
+    scene.add(figure![
+        (&back_collar),
+        (&back_collar_outline, dash),
+        (&hook_attach_stitched, dash)
+    ]);
 
-    let h_a = scene.add_shape(&hook_attach, RenderMode::Outline, offset_850);
-    let h_a_s = scene.add_shape(&hook_attach_stitch, RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]), offset_850);
-    scene.add_again(h_a, offset_850_right);
-    scene.add_again(h_a_s, offset_850_right);
+    scene.add(figure![
+        (&back_collar, RenderMode::Outline, Some(mirror)),
+        (&back_collar_outline, dash, Some(mirror))
+    ]);
+
+    let attach = hook_attach(HOOK_ATTACH_SPACING);
+    let attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
+    for _ in 0 .. 2 {
+        scene.add(figure![
+            (&attach, RenderMode::Outline),
+            (&attach_stitch, dash)
+        ]);
+    }
 
     helper::display(&[&front_collar]);
+
+    let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
+    scene.render_all(&mut pdf);
+    pdf.write_out("collar.pdf");
 }
