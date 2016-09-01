@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![feature(pub_restricted)]
+#![feature(pub_restricted, repr_simd)]
 
 extern crate vecmath;
 extern crate rand;

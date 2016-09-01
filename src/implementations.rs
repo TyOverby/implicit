@@ -352,6 +352,11 @@ impl <I: Implicit> Implicit for Not<I> {
     }
 }
 
+#[repr(simd)]
+struct SixteenBytes(u64, u64);
+
+struct AlignedArray<T>([T; 4], [SixteenBytes; 0]);
+
 impl Implicit for Polygon {
     fn sample(&self, pos: Point) -> f32 {
         use simd::*;
@@ -406,9 +411,9 @@ impl Implicit for Polygon {
             }
 
             // Min dist
-            let mut out_dist = [0.0, 0.0, 0.0, 0.0];
-            min_dist.store(&mut out_dist, 0);
-            let mut min = out_dist[0].min(out_dist[1]).min(out_dist[2]).min(out_dist[3]);
+            let mut out_dist = AlignedArray([0.0, 0.0, 0.0, 0.0], []);
+            min_dist.store(&mut out_dist.0, 0);
+            let mut min = out_dist.0[0].min(out_dist.0[1]).min(out_dist.0[2]).min(out_dist.0[3]);
 
             let remaining_lines = &self.lines()[simd_used ..];
             debug_assert!(remaining_lines.len() < 4);
@@ -417,12 +422,12 @@ impl Implicit for Polygon {
             }
 
             // Intersect count
-            let mut out_intersect_1 = [0, 0, 0, 0];
-            let mut out_intersect_2 = [0, 0, 0, 0];
-            ray_intersect_1.store(&mut out_intersect_1, 0);
-            ray_intersect_2.store(&mut out_intersect_2, 0);
-            let mut out_intersect_1 = out_intersect_1[0] + out_intersect_1[1] + out_intersect_1[2] + out_intersect_1[3];
-            let mut out_intersect_2 = out_intersect_2[0] + out_intersect_2[1] + out_intersect_2[2] + out_intersect_2[3];
+            let mut out_intersect_1 = AlignedArray([0, 0, 0, 0], []);
+            let mut out_intersect_2 = AlignedArray([0, 0, 0, 0], []);
+            ray_intersect_1.store(&mut out_intersect_1.0, 0);
+            ray_intersect_2.store(&mut out_intersect_2.0, 0);
+            let mut out_intersect_1 = out_intersect_1.0[0] + out_intersect_1.0[1] + out_intersect_1.0[2] + out_intersect_1.0[3];
+            let mut out_intersect_2 = out_intersect_2.0[0] + out_intersect_2.0[1] + out_intersect_2.0[2] + out_intersect_2.0[3];
 
             fn intersection_count_dummy(ray: Ray, lines: &[Line]) -> i32 {
                 let mut hit_count = 0;

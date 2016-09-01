@@ -17,10 +17,10 @@ thread-id = "2.0.0"
 [dependencies.flame]
 # version = "0.1.8"
 path = "../flame/"
-features = ["json"]
+#features = ["json"]
 
 [dependencies.simd]
 git = "https://github.com/rekka/simd.git"
 
 [dev-dependencies]
-lux = "0.1.1"
+lux = "0.1.2"
