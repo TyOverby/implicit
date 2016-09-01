@@ -15,9 +15,8 @@ rayon = "0.3.1"
 thread-id = "2.0.0"
 
 [dependencies.flame]
-# version = "0.1.8"
-path = "../flame/"
-#features = ["json"]
+version = "0.1.9"
+features = ["json"]
 
 [dependencies.simd]
 git = "https://github.com/rekka/simd.git"

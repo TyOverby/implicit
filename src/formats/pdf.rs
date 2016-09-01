@@ -23,7 +23,7 @@ impl PdfWriter {
         }
     }
 
-    pub fn write_out(mut self, path: &str) {
+    pub fn write_out(&self, path: &str) {
         use std::io::Write;
         use std::fs::File;
 
