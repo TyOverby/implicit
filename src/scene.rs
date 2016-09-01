@@ -89,7 +89,6 @@ impl <'a, S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<'a, S, 
     }
 
     fn render(&self, state: &mut FigureState) {
-        println!("{}", state.current_y);
         let shape = self.shape.translate(-state.low_x, state.current_y - state.low_y);
         let bb = shape.bounding_box().unwrap();
         let bb = transform_bounding_box(bb, self.matrix.unwrap_or(Matrix::new()));
