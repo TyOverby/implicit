@@ -24,13 +24,14 @@ impl QuadTreeProducer for () {
     fn make_empty(&mut self, _rect: Rect, _fill: f32) -> Self::Tree {  }
 }
 
+#[inline]
 fn should_early_return<P: QuadTreeProducer>(p: &mut P, v: f32, rect: Rect) -> Option<P::Tree> {
     let furthest = {
         let r = rect.width() / 2.0;
-        let _2r2 = 2.0 * (r * r);
-        _2r2.sqrt()
+        2.0 * (r * r)
     };
-    if v.abs() > furthest {
+
+    if v * v > furthest {
         Some(if v < 0.0 {
             p.make_leaf_full(rect)
         } else {
