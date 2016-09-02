@@ -86,17 +86,19 @@ where S: Implicit, P: QuadTreeProducer {
     let sw_quad = Rect::from_points(&rect.bottom_left(), &midpoint);
 
     if depth == 1 {
+        let (north, south, east, west) = (rect.north(), rect.south(), rect.east(), rect.west());
+
+        ::flame::start("sampling");
         let a = shape.sample(rect.top_left());
         let b = shape.sample(rect.top_right());
         let c = shape.sample(rect.bottom_right());
         let d = shape.sample(rect.bottom_left());
 
-        let (north, south, east, west) = (rect.north(), rect.south(), rect.east(), rect.west());
-
         let n = shape.sample(north);
         let s = shape.sample(south);
         let e = shape.sample(east);
         let w = shape.sample(west);
+        ::flame::end("sampling");
 
         let xa = gather_final(p, shape, nw_quad, out, a, n, m, w);
         let xb = gather_final(p, shape, ne_quad, out, n, b, e, m);
