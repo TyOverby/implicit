@@ -12,7 +12,7 @@ use implicit::*;
 use implicit::geom::*;
 use std::fs::File;
 
-const ITERS: usize = 1;
+const ITERS: usize = 100;
 
 /// Why do SCALE and RESOLUTION not cancel eachother out when increased at the same rate?
 const RECURSION_DEPTH: u32 = 8;
@@ -46,6 +46,5 @@ fn main() {
     println!("{}", ::flame::Thread::into_json_list(&threads));
     println!("avg: {}, min: {}, max: {}", total / ITERS as f32, minimum, maximum);
 
-    //helper::display(&[&poly as &(Implicit + Sync), &square as &(Implicit + Sync)]);
-    helper::display(&[&poly]);
+    //helper::display(&[&poly]);
 }

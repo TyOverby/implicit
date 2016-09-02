@@ -11,8 +11,8 @@ use implicit::formats::pdf::PdfWriter;
 use implicit::geom::*;
 
 // ALL
-const DASH_SIZE_ON: f32 = 7.0;
-const DASH_SIZE_OFF: f32 = 10.0;
+const DASH_SIZE_ON: f32 = 15.0;
+const DASH_SIZE_OFF: f32 = 15.0;
 
 // BASE
 const NECK_CIRC: f32 = 1250.0;

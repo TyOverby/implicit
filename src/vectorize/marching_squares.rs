@@ -1,4 +1,3 @@
-use Implicit;
 use ::util::geom::{Line, Point, Vector};
 
 pub enum MarchResult {
@@ -54,7 +53,7 @@ fn lerp(fa: f32, fb: f32, dist: f32) -> f32 {
     -dist / 2.0 + dist * ((-fa) / (fb - fa))
 }
 
-pub fn march<I: Implicit + ?Sized>(sra: f32, srb: f32, src: f32, srd: f32, srm:Option<f32>, i: &I, p: Point, dist: f32) -> MarchResult {
+pub fn march(sra: f32, srb: f32, src: f32, srd: f32, srm: f32, p: Point, dist: f32) -> MarchResult {
     let a_on = sra <= 0.0;
     let b_on = srb <= 0.0;
     let c_on = src <= 0.0;
@@ -96,7 +95,6 @@ pub fn march<I: Implicit + ?Sized>(sra: f32, srb: f32, src: f32, srd: f32, srm:O
         // . o
         // TODO: linear interpolation here.
         (false, true, false, true)  => {
-            let srm = srm.unwrap_or(i.sample(p));
             let m_on = srm <= 0.0;
 
             // o   .
@@ -148,7 +146,6 @@ pub fn march<I: Implicit + ?Sized>(sra: f32, srb: f32, src: f32, srd: f32, srm:O
         // o .
         // TODO: lerp
         (true, false, true, false)  => {
-            let srm = srm.unwrap_or(i.sample(p));
             let m_on = srm <= 0.0;
 
             // .   o

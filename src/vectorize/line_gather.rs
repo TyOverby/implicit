@@ -24,68 +24,90 @@ impl QuadTreeProducer for () {
     fn make_empty(&mut self, _rect: Rect, _fill: f32) -> Self::Tree {  }
 }
 
-fn gather<S: ?Sized, P>(p: &mut P, shape: &S, rect: Rect, depth: u32, out: &mut Vec<Line>) -> P::Tree
-where S: Implicit, P: QuadTreeProducer {
-    let a = shape.sample(rect.top_left());
-    let b = shape.sample(rect.top_right());
-    let c = shape.sample(rect.bottom_right());
-    let d = shape.sample(rect.bottom_left());
-    gather_real(p, shape, rect, depth, out, a, b, c, d)
-}
-
-// A N B
-// W M E
-// D S C
-fn gather_real<S: ?Sized, P: QuadTreeProducer>(p: &mut P, shape: &S, rect: Rect, depth: u32, out: &mut Vec<Line>, a: f32, b: f32, c: f32, d: f32) -> P::Tree
-where S: Implicit, P: QuadTreeProducer {
-    let midpoint = rect.midpoint();
-    let m = shape.sample(midpoint);
-
+fn should_early_return<P: QuadTreeProducer>(p: &mut P, v: f32, rect: Rect) -> Option<P::Tree> {
     let furthest = {
         let r = rect.width() / 2.0;
         let _2r2 = 2.0 * (r * r);
         _2r2.sqrt()
     };
-    if m.abs() > furthest {
-        if m < 0.0 {
-            return p.make_leaf_full(rect)
+    if v.abs() > furthest {
+        Some(if v < 0.0 {
+            p.make_leaf_full(rect)
         } else {
-            return p.make_leaf_empty(rect)
-        }
+            p.make_leaf_empty(rect)
+        })
+    } else {
+        None
+    }
+}
+
+fn gather_final<S: ?Sized, P>(p: &mut P, shape: &S, rect: Rect, out: &mut Vec<Line>, a: f32, b: f32, c: f32, d: f32) -> P::Tree
+where S: Implicit, P: QuadTreeProducer {
+    let midpoint = rect.midpoint();
+    let m = shape.sample(midpoint);
+
+    if let Some(early_return) = should_early_return(p, m, rect) {
+        return early_return;
     }
 
-    if depth == 0 {
-        let result = march(a, b, c, d, Some(m), shape, midpoint, rect.width());
-        match result {
-            MarchResult::One(l) => {
-                out.push(l);
-                p.make_leaf_line(rect, m, l)
-            }
-            MarchResult::Two(l1, l2) => {
-                out.push(l1);
-                out.push(l2);
-                p.make_leaf_double_line(rect, m, l1, l2)
-            }
-            _ => {
-                p.make_empty(rect, m)
-            },
+    let result = march(a, b, c, d, m, midpoint, rect.width());
+    match result {
+        MarchResult::One(l) => {
+            out.push(l);
+            p.make_leaf_line(rect, m, l)
         }
-    } else {
+        MarchResult::Two(l1, l2) => {
+            out.push(l1);
+            out.push(l2);
+            p.make_leaf_double_line(rect, m, l1, l2)
+        }
+        _ => {
+            p.make_empty(rect, m)
+        },
+    }
+}
+
+// A N B
+// W M E
+// D S C
+fn gather<S: ?Sized, P: QuadTreeProducer>(p: &mut P, shape: &S, rect: Rect, depth: u32, out: &mut Vec<Line>) -> P::Tree
+where S: Implicit, P: QuadTreeProducer {
+    let midpoint = rect.midpoint();
+    let m = shape.sample(midpoint);
+
+    if let Some(early_return) = should_early_return(p, m, rect) {
+        return early_return;
+    }
+
+    let nw_quad = Rect::from_points(&rect.top_left(), &midpoint);
+    let ne_quad = Rect::from_points(&rect.top_right(), &midpoint);
+    let se_quad = Rect::from_points(&rect.bottom_right(), &midpoint);
+    let sw_quad = Rect::from_points(&rect.bottom_left(), &midpoint);
+
+    if depth == 1 {
+        let a = shape.sample(rect.top_left());
+        let b = shape.sample(rect.top_right());
+        let c = shape.sample(rect.bottom_right());
+        let d = shape.sample(rect.bottom_left());
+
         let (north, south, east, west) = (rect.north(), rect.south(), rect.east(), rect.west());
+
         let n = shape.sample(north);
         let s = shape.sample(south);
         let e = shape.sample(east);
         let w = shape.sample(west);
 
-        let nw_quad = Rect::from_points(&rect.top_left(), &midpoint);
-        let ne_quad = Rect::from_points(&rect.top_right(), &midpoint);
-        let se_quad = Rect::from_points(&rect.bottom_right(), &midpoint);
-        let sw_quad = Rect::from_points(&rect.bottom_left(), &midpoint);
+        let xa = gather_final(p, shape, nw_quad, out, a, n, m, w);
+        let xb = gather_final(p, shape, ne_quad, out, n, b, e, m);
+        let xc = gather_final(p, shape, se_quad, out, m, e, c, s);
+        let xd = gather_final(p, shape, sw_quad, out, w, m, s, d);
 
-        let xa = gather_real::<_, P>(p, shape, nw_quad, depth - 1, out, a, n, m, w);
-        let xb = gather_real::<_, P>(p, shape, ne_quad, depth - 1, out, n, b, e, m);
-        let xc = gather_real::<_, P>(p, shape, se_quad, depth - 1, out, m, e, c, s);
-        let xd = gather_real::<_, P>(p, shape, sw_quad, depth - 1, out, w, m, s, d);
+        p.make_branch(rect, xa, xb, xc, xd)
+    } else {
+        let xa = gather(p, shape, nw_quad, depth - 1, out);
+        let xb = gather(p, shape, ne_quad, depth - 1, out);
+        let xc = gather(p, shape, se_quad, depth - 1, out);
+        let xd = gather(p, shape, sw_quad, depth - 1, out);
 
         p.make_branch(rect, xa, xb, xc, xd)
     }
@@ -94,6 +116,8 @@ where S: Implicit, P: QuadTreeProducer {
 pub fn gather_lines<S: ?Sized, P>(p: &mut P, shape: &S, depth: u32) -> (P::Tree, Vec<Line>)
 where S: Implicit + Sync, P: QuadTreeProducer {
     let mut out = vec![];
+
+    let depth = if depth == 0 { 1 } else { depth };
 
     let bb = shape.bounding_box().unwrap();
     let w = bb.width();
