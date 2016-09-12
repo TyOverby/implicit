@@ -10,8 +10,8 @@ use ::Implicit;
 use itertools::Itertools;
 use flame;
 
-#[derive(Clone, Copy)]
-pub enum RenderMode<'a> {
+#[derive(Clone)]
+pub enum RenderMode {
     /// The shape is filled in and completely solid.
     Solid,
     /// The shape is traced with an outline.
@@ -26,19 +26,19 @@ pub enum RenderMode<'a> {
     ///
     /// -  ---    -----      -  ---    -----
     /// 1 2 3  4    5     6  1 2 3   4   5    6
-    BasicDashed(&'a[f32]),
+    BasicDashed(Vec<f32>),
     /// The shape is traced with a dashed outline.
     ///
     /// The dash-segment length and gap length
     /// are stretched to repeat exactly N times.
-    DashedRepeatingN(&'a[f32], f32),
+    DashedRepeatingN(Vec<f32>, f32),
     /// The shape is traced with a dashed outline that
     /// wraps around to end exactly where it began.
     ///
     /// The dash-segment length and gap length are
     /// stretched the smallest amount to make the
     /// ends meet.
-    DashedPerfect(&'a[f32])
+    DashedPerfect(Vec<f32>)
 }
 
 #[derive(Clone)]
@@ -64,7 +64,7 @@ impl <'a> Iterator for SegmentIter<'a> {
     fn next(&mut self) -> Option<&'a [Point]> {
         if self.last_segment_idx >= self.data.sizes.len() {
             return None
-        } 
+        }
         let size_of_segment = self.data.sizes[self.last_segment_idx];
         let slice = &self.data.points[
             self.last_points_pos ..

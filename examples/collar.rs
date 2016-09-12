@@ -162,48 +162,51 @@ fn main() {
     let hook_attach_stitched = hook_attach_stitch(HOOK_BASE_SPACING).shrink(STITCH_OFFSET);
     let hook_attach_stitched = hook_attach_stitched.center_at(&front_collar.center().unwrap());
 
+    let attach = hook_attach(HOOK_ATTACH_SPACING);
+    let attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
+
     let mut scene = Scene::new();
     scene.recursion_depth = 10;
 
     let center = front_collar.bounding_box().unwrap().midpoint();
     let mirror = Matrix::new().mirror_horizontal(center.x);
 
-    let arr = &[DASH_SIZE_ON, DASH_SIZE_OFF];
-    let dash = RenderMode::DashedPerfect(arr);
+    let dash = RenderMode::DashedPerfect(vec![DASH_SIZE_ON, DASH_SIZE_OFF]);
 
     scene.add(figure![
         (&front_collar),
-        (&front_collar_outline, dash),
-        (&hook_attach_stitched, dash)
+        (&front_collar_outline, dash.clone()),
+        (&hook_attach_stitched, dash.to_owned())
     ]);
 
 
     scene.add(figure![
         (&front_collar, RenderMode::Outline, Some(mirror)),
-        (&front_collar_outline, dash, Some(mirror))
+        (&front_collar_outline, dash.clone(), Some(mirror))
     ]);
 
     scene.add(figure![
         (&back_collar),
-        (&back_collar_outline, dash),
-        (&hook_attach_stitched, dash)
+        (&back_collar_outline, dash.clone()),
+        (&hook_attach_stitched, dash.clone())
     ]);
 
     scene.add(figure![
         (&back_collar, RenderMode::Outline, Some(mirror)),
-        (&back_collar_outline, dash, Some(mirror))
+        (&back_collar_outline, dash.clone(), Some(mirror))
     ]);
 
-    let attach = hook_attach(HOOK_ATTACH_SPACING);
-    let attach_stitch = hook_attach_stitch(HOOK_ATTACH_SPACING).shrink(STITCH_OFFSET);
-    for _ in 0 .. 2 {
-        scene.add(figure![
-            (&attach, RenderMode::Outline),
-            (&attach_stitch, dash)
-        ]);
-    }
+    scene.add(figure![
+        (&attach, RenderMode::Outline),
+        (&attach_stitch, dash.clone())
+    ]);
 
-    // helper::display(&[&front_collar]);
+    scene.add(figure![
+        (&attach, RenderMode::Outline),
+        (&attach_stitch, dash.clone())
+    ]);
+
+    helper::display(&mut scene);
 
     let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
     scene.render_all(&mut pdf);

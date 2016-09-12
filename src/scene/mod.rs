@@ -1,5 +1,8 @@
+mod drawing_quadtree_producer;
+
 use ::{OutputMode, RenderMode, Implicit, render, OutputDevice};
 use ::util::geom::{Point, Rect, Matrix};
+use self::drawing_quadtree_producer::DrawWrapper;
 
 #[macro_export]
 macro_rules! figure {
@@ -46,6 +49,19 @@ macro_rules! figure {
 pub trait ApplyFigure {
     fn analyze(&self, state: &mut FigureState);
     fn render(&self, state: &mut FigureState);
+    fn draw_into(&self, state: &FigureState, f: &mut FnMut(Rect, SampleValue));
+}
+
+pub struct Scene<'a> {
+    sections: Vec<Box<ApplyFigure + 'a>>,
+    pub recursion_depth: u32,
+    margin: f32,
+}
+
+pub enum SampleValue {
+    Filled,
+    Empty,
+    Partial(f32),
 }
 
 pub struct FigureState {
@@ -63,7 +79,7 @@ pub struct FigureLink<'a, S: Implicit + 'a, N: ApplyFigure> {
     pub shape: &'a S,
     pub mask: Option<&'a Implicit>,
     pub matrix: Option<Matrix>,
-    pub mode: RenderMode<'a>,
+    pub mode: RenderMode,
 
     pub next: N
 }
@@ -71,10 +87,10 @@ pub struct FigureLink<'a, S: Implicit + 'a, N: ApplyFigure> {
 impl ApplyFigure for () {
     fn analyze(&self, _: &mut FigureState) { }
     fn render(&self, _: &mut FigureState) { }
+    fn draw_into(&self, _: &FigureState, _: &mut FnMut(Rect, SampleValue)) {}
 }
 
 impl <'a, S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<'a, S, N> {
-
     fn analyze(&self, state: &mut FigureState) {
         let bb = self.shape.bounding_box().unwrap();
         let bb = transform_bounding_box(bb, self.matrix.unwrap_or(Matrix::new()));
@@ -100,56 +116,87 @@ impl <'a, S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<'a, S, 
         // Continue
         self.next.render(state);
     }
+
+    fn draw_into(&self, state: &FigureState, f: &mut FnMut(Rect, SampleValue)) {
+        if let &RenderMode::Outline = &self.mode {
+            let shape = self.shape.translate(-state.low_x, state.current_y - state.low_y);
+            ::vectorize::line_gather::gather_lines(&mut DrawWrapper(f), &shape, state.recursion_depth);
+            self.next.draw_into(state, f);
+        }
+    }
 }
 
-
-
-pub struct Scene {
-    shapes: Vec<OutputMode>,
-    pub recursion_depth: u32,
-    pub total_bounding_box: Rect,
-    current_y: f32,
-    margin: f32,
-}
-
-impl Scene {
-    pub fn new() -> Scene {
+impl <'a> Scene<'a> {
+    pub fn new() -> Scene<'a> {
         Scene {
-            shapes: Vec::new(),
-            current_y: 0.0,
+            sections: Vec::new(),
             recursion_depth: 8,
-            total_bounding_box: Rect::null_at(&Point{ x: 0.0, y: 0.0}),
             margin: 10.0,
         }
     }
 
-    pub fn add<L: ApplyFigure>(&mut self, list: L) {
+    pub fn render_shapes(&self) -> (Vec<OutputMode>, Rect) {
+        let mut total_bounding_box = Rect::null();
+        let mut out = vec![];
+
         let null_rect = Rect::null();
+        let mut current_y = self.margin;
 
-        let mut state = FigureState {
-            low_x: ::std::f32::INFINITY,
-            low_y: ::std::f32::INFINITY,
-            figure_bb: null_rect,
-            adjusted_bb: null_rect,
-            shapes: vec![],
+        for list in &self.sections {
+            let mut state = FigureState {
+                low_x: ::std::f32::INFINITY,
+                low_y: ::std::f32::INFINITY,
+                figure_bb: null_rect,
+                adjusted_bb: null_rect,
+                shapes: vec![],
 
-            current_y: self.current_y,
-            recursion_depth: self.recursion_depth,
-        };
+                current_y: current_y,
+                recursion_depth: self.recursion_depth,
+            };
 
-        list.analyze(&mut state);
-        list.render(&mut state);
+            list.analyze(&mut state);
+            list.render(&mut state);
 
-        self.shapes.append(&mut state.shapes);
-        self.current_y += state.figure_bb.height();
-        self.current_y += self.margin;
-        self.total_bounding_box = self.total_bounding_box.union_with(&state.adjusted_bb);
+            out.append(&mut state.shapes);
+            current_y += state.figure_bb.height();
+            current_y += self.margin;
+            total_bounding_box = total_bounding_box.union_with(&state.adjusted_bb);
+        }
+
+        (out, total_bounding_box)
     }
 
+    pub fn add<L: ApplyFigure + 'a>(&mut self, list: L) {
+        self.sections.push(Box::new(list));
+    }
+
+    pub fn sample_all<F: FnMut(Rect, SampleValue)>(&self, mut f: F) {
+        let null_rect = Rect::null();
+        let mut current_y = self.margin;
+
+        for list in &self.sections {
+            let mut state = FigureState {
+                low_x: ::std::f32::INFINITY,
+                low_y: ::std::f32::INFINITY,
+                figure_bb: null_rect,
+                adjusted_bb: null_rect,
+                shapes: vec![],
+
+                current_y: current_y,
+                recursion_depth: self.recursion_depth,
+            };
+            list.analyze(&mut state);
+            list.draw_into(&state, &mut f);
+
+            current_y += state.figure_bb.height();
+            current_y += self.margin;
+        }
+    }
 
     pub fn render_all<O: OutputDevice>(&self, out: &mut O) {
-        out.set_size(self.total_bounding_box.width(), self.total_bounding_box.height());
-        for rendered in &self.shapes {
+        let (shapes, total_bounding_box) = self.render_shapes();
+        out.set_size(total_bounding_box.width(), total_bounding_box.height());
+        for rendered in &shapes {
             match rendered {
                 &OutputMode::Solid(_) => unimplemented!(),
                 &OutputMode::Outline(ref lines) => {

@@ -436,7 +436,7 @@ impl Implicit for Polygon {
                         hit_count += 1;
                     }
                 }
-                hit_count 
+                hit_count
             }
 
             out_intersect_1 += intersection_count_dummy(ray_1, &self.lines()[simd_used..]);

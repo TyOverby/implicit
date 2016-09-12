@@ -9,9 +9,9 @@ use lux::interactive::Event;
 use implicit::*;
 use implicit::geom::Point;
 
-struct DisplayCanvas {
+struct DisplayCanvas<'a> {
     zoom: f32,
-    scene: Scene,
+    scene: Scene<'a>,
 }
 
 fn handle_events<I>(canvas: &mut DisplayCanvas, events: I, dirty: &mut bool)
@@ -73,7 +73,7 @@ impl <'a> OutputDevice for DrawStateHolder<'a> {
     }
 }
 
-pub fn display(scene: Scene) {
+pub fn display<'a>(scene: Scene<'a>) {
     let mut canvas = DisplayCanvas {
         zoom: 1.0,
         scene: scene,

@@ -11,7 +11,7 @@ vecmath = "0.1.1"
 itertools = "0.4.11"
 fnv = "1.0.2"
 num_cpus = "0.2.11"
-rayon = "0.3.1"
+rayon = "0.4.*"
 thread-id = "2.0.0"
 
 [dependencies.flame]
