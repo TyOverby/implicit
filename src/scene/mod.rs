@@ -52,8 +52,8 @@ pub trait ApplyFigure {
     fn draw_into(&self, state: &FigureState, f: &mut FnMut(Rect, SampleValue));
 }
 
-pub struct Scene<'a> {
-    sections: Vec<Box<ApplyFigure + 'a>>,
+pub struct Scene {
+    sections: Vec<Box<ApplyFigure>>,
     pub recursion_depth: u32,
     margin: f32,
 }
@@ -75,9 +75,9 @@ pub struct FigureState {
     recursion_depth: u32,
 }
 
-pub struct FigureLink<'a, S: Implicit + 'a, N: ApplyFigure> {
-    pub shape: &'a S,
-    pub mask: Option<&'a Implicit>,
+pub struct FigureLink<S: Implicit, N: ApplyFigure> {
+    pub shape: S,
+    pub mask: Option<Box<Implicit>>,
     pub matrix: Option<Matrix>,
     pub mode: RenderMode,
 
@@ -90,7 +90,7 @@ impl ApplyFigure for () {
     fn draw_into(&self, _: &FigureState, _: &mut FnMut(Rect, SampleValue)) {}
 }
 
-impl <'a, S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<'a, S, N> {
+impl <S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<S, N> {
     fn analyze(&self, state: &mut FigureState) {
         let bb = self.shape.bounding_box().unwrap();
         let bb = transform_bounding_box(bb, self.matrix.unwrap_or(Matrix::new()));
@@ -105,7 +105,7 @@ impl <'a, S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<'a, S, 
     }
 
     fn render(&self, state: &mut FigureState) {
-        let shape = self.shape.translate(-state.low_x, state.current_y - state.low_y);
+        let shape = (&self.shape).translate(-state.low_x, state.current_y - state.low_y);
         let bb = shape.bounding_box().unwrap();
         let bb = transform_bounding_box(bb, self.matrix.unwrap_or(Matrix::new()));
         state.adjusted_bb = state.adjusted_bb.union_with(&bb);
@@ -119,15 +119,15 @@ impl <'a, S: Implicit + Sync, N: ApplyFigure> ApplyFigure for FigureLink<'a, S, 
 
     fn draw_into(&self, state: &FigureState, f: &mut FnMut(Rect, SampleValue)) {
         if let &RenderMode::Outline = &self.mode {
-            let shape = self.shape.translate(-state.low_x, state.current_y - state.low_y);
+            let shape = (&self.shape).translate(-state.low_x, state.current_y - state.low_y);
             ::vectorize::line_gather::gather_lines(&mut DrawWrapper(f), &shape, state.recursion_depth);
             self.next.draw_into(state, f);
         }
     }
 }
 
-impl <'a> Scene<'a> {
-    pub fn new() -> Scene<'a> {
+impl Scene {
+    pub fn new() -> Scene {
         Scene {
             sections: Vec::new(),
             recursion_depth: 8,
@@ -166,7 +166,7 @@ impl <'a> Scene<'a> {
         (out, total_bounding_box)
     }
 
-    pub fn add<L: ApplyFigure + 'a>(&mut self, list: L) {
+    pub fn add<L: ApplyFigure + 'static>(&mut self, list: L) {
         self.sections.push(Box::new(list));
     }
 
@@ -195,6 +195,7 @@ impl <'a> Scene<'a> {
 
     pub fn render_all<O: OutputDevice>(&self, out: &mut O) {
         let (shapes, total_bounding_box) = self.render_shapes();
+        let Point { x: top_x, y: top_y } = total_bounding_box.top_left();
         out.set_size(total_bounding_box.width(), total_bounding_box.height());
         for rendered in &shapes {
             match rendered {
@@ -202,9 +203,17 @@ impl <'a> Scene<'a> {
                 &OutputMode::Outline(ref lines) => {
                     for line in lines {
                         out.start_line();
-                        let start = line[0];
-                        for p in line { out.add_point(*p); }
-                        out.add_point(start);
+                        let Point { x: start_x, y:start_y } = line[0];
+                        for &Point{x, y} in line {
+                            out.add_point(Point {
+                                x: x - top_x,
+                                y: y - top_y
+                            });
+                        }
+                        out.add_point(Point {
+                            x: start_x - top_x,
+                            y: start_y - top_y
+                        });
                         out.end_line();
                     }
                 },
@@ -212,8 +221,11 @@ impl <'a> Scene<'a> {
                     for dashed_line in dashed {
                         for segment in dashed_line.segments() {
                             out.start_line();
-                            for p in segment {
-                                out.add_point(*p);
+                            for &Point{x, y} in segment {
+                                out.add_point(Point {
+                                    x: x + top_x,
+                                    y: y + top_y,
+                                });
                             }
                             out.end_line();
                         }

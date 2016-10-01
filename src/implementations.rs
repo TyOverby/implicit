@@ -245,12 +245,12 @@ impl <A: Implicit> Implicit for Scale<A> {
             None => return None
         };
 
-        let top_left = bb.top_left();
+        let Point {x, y} = bb.top_left();
         let w = bb.width() * self.factor;
         let h = bb.height() * self.factor;
 
 
-        Some(Rect::from_point_and_size(&top_left, &Vector{x: w, y: h}))
+        Some(Rect::from_point_and_size(&Point{x: x * self.factor, y: y * self.factor}, &Vector{x: w, y: h}))
     }
 
     fn follows_rules(&self) -> bool {

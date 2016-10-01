@@ -13,10 +13,11 @@ fnv = "1.0.2"
 num_cpus = "0.2.11"
 rayon = "0.4.*"
 thread-id = "2.0.0"
+num-traits = "0.1.36"
 
 [dependencies.flame]
 version = "0.1.9"
-features = ["json"]
+#features = ["json"]
 
 [dependencies.simd]
 git = "https://github.com/rekka/simd.git"
