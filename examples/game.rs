@@ -66,24 +66,25 @@ fn grid() -> Vec<Polygon> {
 }
 
 fn main() {
-    let mut scene = Scene::new();
-    scene.recursion_depth = 10;
+    fn write_out<F: ApplyFigure + 'static>(name: &str, figure: F) {
+        let mut scene = Scene::new();
+        scene.recursion_depth = 10;
+        scene.add(figure);
+
+        let mut pdf = PdfWriter::new("in", (1.0/200.0) * 72.0);
+        scene.render_all(&mut pdf);
+        pdf.write_out(name);
+    }
 
     let gridded = OrThese::new(grid().into_iter().map(|s| {
         s.shrink(0.1).scale(100.0).smooth(25.0, 10)
     }).collect());
 
-    let border = OrThese::new(grid().into_iter().map(|s| {
+    let backing = OrThese::new(grid().into_iter().map(|s| {
         s.grow(0.4).scale(100.0).smooth(0.0, 10)
     }).collect());
 
-    scene.add(figure!((gridded.clone())));
-    scene.add(figure!((border.clone())));
-    scene.add(figure!((border.and_not(gridded))));
-
-    //helper::display(&mut scene);
-
-    let mut pdf = PdfWriter::new("in", (1.0/100.0) * 72.0);
-    scene.render_all(&mut pdf);
-    pdf.write_out("game.pdf");
+    write_out("pieces.pdf", figure!((gridded.clone())));
+    write_out("backing.pdf", figure!((backing.clone())));
+    write_out("border.pdf", figure!((backing.and_not(gridded))));
 }
